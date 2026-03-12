@@ -1,0 +1,38 @@
+name: gax_glowpath_puzzle_1
+description: Infinite Neon Puzzle Game.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Icons for iOS style assets
+  cupertino_icons: ^1.0.2
+  
+  # For the Sci-Fi "Orbitron" and "Exo 2" fonts
+  google_fonts: ^6.1.0
+  
+  # For all the smooth bouncing/scaling animations
+  flutter_animate: ^4.2.0+1
+  
+  # To save progress, stars, settings, and hints
+  shared_preferences: ^2.2.1
+  
+  # To open the YouTube Subscribe link
+  url_launcher: ^6.2.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  # 🖼️ REQUIRED for the new Home Screen Background
+  assets:
+    - assets/
