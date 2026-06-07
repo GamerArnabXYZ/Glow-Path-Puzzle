@@ -35,7 +35,7 @@ class _MainMenuState extends State<MainMenu> {
           child: FadeTransition(
             opacity: a1,
             child: ScaleTransition(
-              scale: Curves.easeOutBack.animate(a1),
+              scale: CurvedAnimation(parent: a1, curve: Curves.easeOutBack),
               child: const _AboutInfoCard(),
             ),
           ),
@@ -89,7 +89,7 @@ class _MainMenuState extends State<MainMenu> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("GLOW PATH", style: GoogleFonts.orbitron(fontSize: 42, fontWeight: FontWeight.black, color: Colors.white, letterSpacing: 5)).animate().shimmer(duration: 2.seconds, color: Colors.cyanAccent).fadeIn(duration: 800.ms).slideY(begin: -0.5, end: 0),
+                      Text("GLOW PATH", style: GoogleFonts.orbitron(fontSize: 42, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 5)).animate().shimmer(duration: 2.seconds, color: Colors.cyanAccent).fadeIn(duration: 800.ms).slideY(begin: -0.5, end: 0),
                       const SizedBox(height: 80),
                       _BouncyBtn(
                         onTap: _startGame,
@@ -151,7 +151,7 @@ class _AboutInfoCard extends StatelessWidget {
            Text("GLOW PATH", style:GoogleFonts.orbitron(fontSize:28, color:Colors.cyanAccent, fontWeight: FontWeight.bold)),
            const SizedBox(height:25), 
            _infoRow(Icons.grid_4x4, "Connect all tiles to win"),
-           _infoRow(Icons.portal, "Use portals to teleport"),
+           _infoRow(Icons.vortex, "Use portals to teleport"),
            _infoRow(Icons.timer, "Beat the boss in time"),
            const Divider(height:40, color:Colors.white10),
            SizedBox(width: double.infinity, child: ElevatedButton(onPressed:()=>Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))), child: const Text("CLOSE", style: TextStyle(fontWeight: FontWeight.bold))))
@@ -192,7 +192,7 @@ class _LSS extends State<LevelSelectScreen> with RouteAware {
                    child: Column(mainAxisAlignment:MainAxisAlignment.center, children:[ 
                      if(loc) const Icon(Icons.lock_outline, size:20, color:Colors.white10) 
                      else ...[ 
-                       Text("${i+1}", style:GoogleFonts.orbitron(fontWeight:FontWeight.black, fontSize:22, color: col)), 
+                       Text("${i+1}", style:GoogleFonts.orbitron(fontWeight:FontWeight.w900, fontSize:22, color: col)), 
                        const SizedBox(height:8), 
                        Row(mainAxisAlignment:MainAxisAlignment.center, children: List.generate(3, (x) => Icon(Icons.star, size:12, color: x < s ? Colors.amber : Colors.white10))) 
                      ]

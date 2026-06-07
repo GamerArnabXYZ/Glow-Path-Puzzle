@@ -1,4 +1,4 @@
-name: 🔨 Advanced Multi-Platform Build & Deploy
+name: 🔨 Mega Build & Deploy
 
 on:
   push:
@@ -11,15 +11,12 @@ permissions:
   id-token: write
 
 jobs:
-  build-and-deploy:
-    name: Build, Deploy & Release
+  build-android:
+    name: 🤖 Android Build
     runs-on: ubuntu-latest
-
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: ☕ Setup Java 17
         uses: actions/setup-java@v4
@@ -37,17 +34,40 @@ jobs:
       - name: 📦 Get Dependencies
         run: flutter pub get
 
-      - name: 🔨 Build Android APKs (Universal & Split)
+      - name: 🔨 Build Android APKs
         run: |
           # Universal APK
           flutter build apk --release
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/GlowPath-Universal.apk
           
-          # Split APKs (v7a, v8a, x86_64)
+          # Split APKs
           flutter build apk --release --split-per-abi
           mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/GlowPath-ARMv7.apk
           mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/GlowPath-ARMv8.apk
           mv build/app/outputs/flutter-apk/app-x86_64-release.apk build/app/outputs/flutter-apk/GlowPath-x86_64.apk
+
+      - name: 📤 Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: build/app/outputs/flutter-apk/GlowPath-*.apk
+
+  build-web:
+    name: 🌐 Web Build & Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get Dependencies
+        run: flutter pub get
 
       - name: 🌐 Build Web (HTML Renderer)
         run: flutter build web --release --web-renderer html --base-href "/Glow-Path-Puzzle/"
@@ -61,6 +81,29 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
 
+      - name: 📤 Upload Web ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-zip
+          path: web-build.zip
+
+  create-release:
+    name: 🚀 Create Release
+    needs: [build-android, build-web]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Download Android APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apks
+          path: apks
+
+      - name: 📥 Download Web ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: web-zip
+          path: web
+
       - name: 🏷️ Handle Release
         run: |
           gh release delete latest-build --yes || true
@@ -70,10 +113,7 @@ jobs:
             --title "✅ GlowPath Mega Build" \
             --notes "### 🚀 Release Breakdown\n- **Android:** 4 APK variants (Universal + 3 ABI-specific)\n- **Web:** Hosted on GitHub Pages & attached as ZIP\n- **Renderer:** Optimized HTML for mobile web performance." \
             --prerelease \
-            build/app/outputs/flutter-apk/GlowPath-Universal.apk \
-            build/app/outputs/flutter-apk/GlowPath-ARMv7.apk \
-            build/app/outputs/flutter-apk/GlowPath-ARMv8.apk \
-            build/app/outputs/flutter-apk/GlowPath-x86_64.apk \
-            web-build.zip
+            apks/GlowPath-*.apk \
+            web/web-build.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
