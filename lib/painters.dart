@@ -10,7 +10,7 @@ class GridPainter extends CustomPainter {
 
   @override 
   void paint(Canvas c, Size z) {
-    Paint b = Paint()..style=PaintingStyle.stroke..color=Colors.white10..strokeWidth=1; 
+    Paint b = Paint()..style=PaintingStyle.stroke..color=Colors.white30..strokeWidth=1; 
     Paint st= Paint()..style=PaintingStyle.fill..color=d.color.withOpacity(0.15);
     double g = s*0.05, bx = s-g*2; 
     

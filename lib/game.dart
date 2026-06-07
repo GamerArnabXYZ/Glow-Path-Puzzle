@@ -90,6 +90,7 @@ class _GS extends State<GameScreen> {
 
   @override Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(backgroundColor:Colors.transparent, elevation:0, title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_d.color, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         actions: [ 
           IconButton(icon:const Icon(Icons.lightbulb_outline, color: Colors.amberAccent),onPressed:_hintLogic), 
@@ -98,9 +99,9 @@ class _GS extends State<GameScreen> {
       ),
       extendBodyBehindAppBar:true,
       body:Stack(children:[
-        kIsWeb 
-          ? Container(color: Colors.black) 
-          : Container(color: Colors.black).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _d.color.withOpacity(0.05), duration: 3.seconds),
+        Container(color: Colors.black),
+        if (!kIsWeb) 
+          Container(color: Colors.transparent).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _d.color.withOpacity(0.05), duration: 3.seconds),
         if(_trans) Center(child: Text("STAGE CLEAR!", style:GoogleFonts.orbitron(fontSize:28, color:Colors.greenAccent, fontWeight: FontWeight.bold)).animate().scale(duration: 400.ms).fadeIn().shimmer(delay: 400.ms)),
         if(!_trans) Center(child:LayoutBuilder(builder:(c,n){_cs=min((n.maxWidth-30)/_d.cols,(n.maxHeight*0.8)/_d.rows); return GestureDetector(onPanUpdate:(d)=>_inp(d.localPosition),onTapDown:(d)=>_inp(d.localPosition),child:SizedBox(width:_cs*_d.cols,height:_cs*_d.rows,child:Stack(children:[CustomPaint(painter:GridPainter(_d,_cs), size:Size.infinite), CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)])));}))
       ])

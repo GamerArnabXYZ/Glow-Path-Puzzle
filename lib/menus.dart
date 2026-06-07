@@ -30,6 +30,15 @@ class _MainMenuState extends State<MainMenu> {
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (_,__,___) => const SizedBox(),
       transitionBuilder: (ctx, a1, a2, child) {
+        if (kIsWeb) {
+          return FadeTransition(
+            opacity: a1,
+            child: ScaleTransition(
+              scale: CurvedAnimation(parent: a1, curve: Curves.easeOutBack),
+              child: const _AboutInfoCard(),
+            ),
+          );
+        }
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 5 * a1.value, sigmaY: 5 * a1.value),
           child: FadeTransition(
@@ -89,7 +98,6 @@ class _MainMenuState extends State<MainMenu> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("GLOW PATH", style: GoogleFonts.orbitron(fontSize: 42, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 5)).animate().shimmer(duration: 2.seconds, color: Colors.cyanAccent).fadeIn(duration: 800.ms).slideY(begin: -0.5, end: 0),
                       const SizedBox(height: 80),
                       _BouncyBtn(
                         onTap: _startGame,
