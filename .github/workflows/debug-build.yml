@@ -80,6 +80,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
+          force_orphan: true # Recommended for clean gh-pages branch
 
       - name: 📤 Upload Web ZIP
         uses: actions/upload-artifact@v4
@@ -92,6 +93,11 @@ jobs:
     needs: [build-android, build-web]
     runs-on: ubuntu-latest
     steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: 📥 Download Android APKs
         uses: actions/download-artifact@v4
         with:
@@ -106,9 +112,11 @@ jobs:
 
       - name: 🏷️ Handle Release
         run: |
+          # Safe delete of previous release/tag
           gh release delete latest-build --yes || true
           git push origin :refs/tags/latest-build || true
           
+          # Create fresh release with all assets
           gh release create latest-build \
             --title "✅ GlowPath Mega Build" \
             --notes "### 🚀 Release Breakdown\n- **Android:** 4 APK variants (Universal + 3 ABI-specific)\n- **Web:** Hosted on GitHub Pages & attached as ZIP\n- **Renderer:** Optimized HTML for mobile web performance." \
