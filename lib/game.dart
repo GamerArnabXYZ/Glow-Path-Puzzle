@@ -23,10 +23,18 @@ class _GS extends State<GameScreen> {
 
   void _loadSets() async { int h = await GameStorage.getHints(); setState(() {_hints=h;}); }
   void _initLvl() { _dang=(widget.idx+1)%10==0; _stgTot=_dang?3:1; _stgCur=0; _elap=0; _load(); }
-  void _load() {
-    _t?.cancel(); _d = LevelGenerator.generate(widget.idx, stage:_stgCur); _path=[_d.start]; _win=false; _trans=false; _timeLeft=10;
+  void _load() async {
+    _t?.cancel(); 
+    setState(() => _trans = true); // Show a brief loading state/overlay
+    
+    // Give UI a frame to breathe
+    await Future.delayed(50.ms);
+    
+    _d = LevelGenerator.generate(widget.idx, stage:_stgCur); 
+    _path=[_d.start]; _win=false; _trans=false; _timeLeft=10;
+    
     _t=Timer.periodic(1.seconds, (t){if(mounted)setState((){if(_dang){_timeLeft--;if(_timeLeft<=0)_fail();}else{_elap++;}} );});
-    setState((){});
+    if(mounted) setState((){});
   }
 
   void _hintLogic() async {
