@@ -26,16 +26,19 @@ class _MainMenuState extends State<MainMenu> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Dismiss",
-      barrierColor: Colors.transparent, 
-      transitionDuration: const Duration(milliseconds: 250),
+      barrierColor: Colors.black54, 
+      transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (_,__,___) => const SizedBox(),
       transitionBuilder: (ctx, a1, a2, child) {
-        final curve = Curves.easeOutBack.transform(a1.value);
-        return Stack(
-          children: [
-            Opacity(opacity: a1.value, child: Container(color: Colors.black87)), 
-            Transform.scale(scale: curve, child: const _AboutInfoCard()),
-          ],
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5 * a1.value, sigmaY: 5 * a1.value),
+          child: FadeTransition(
+            opacity: a1,
+            child: ScaleTransition(
+              scale: Curves.easeOutBack.animate(a1),
+              child: const _AboutInfoCard(),
+            ),
+          ),
         );
       },
     );
@@ -60,8 +63,9 @@ class _MainMenuState extends State<MainMenu> {
           Image.asset(
             "assets/background.png", 
             fit: BoxFit.cover,
-            errorBuilder: (c,e,s) => Container(decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0F2027), Color(0xFF2C5364)], begin: Alignment.topCenter, end: Alignment.bottomCenter))),
-          ),
+            errorBuilder: (c,e,s) => Container(decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF000428), Color(0xFF004e92)], begin: Alignment.topLeft, end: Alignment.bottomRight))),
+          ).animate().fadeIn(duration: 1.seconds),
+          Container(color: Colors.black38),
           SafeArea(
             child: Stack(
               children: [
@@ -82,32 +86,35 @@ class _MainMenuState extends State<MainMenu> {
                   )
                 ),
                 Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 220), 
-                    child: _BouncyBtn(
-                      onTap: _startGame,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(width: 100, height: 100,
-                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.tealAccent.withOpacity(0.5))))
-                          .animate(onPlay: (c)=>c.repeat()).scale(begin: const Offset(1,1), end: const Offset(2.0, 2.0), duration: 1500.ms, curve: Curves.easeOut).fadeOut(duration: 1500.ms),
-                          Container(
-                            width: 90, height: 90,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.tealAccent.withOpacity(0.15),
-                              border: Border.all(color: Colors.tealAccent, width: 2),
-                              boxShadow: [BoxShadow(color: Colors.tealAccent.withOpacity(0.6), blurRadius: 25)]
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text("GLOW PATH", style: GoogleFonts.orbitron(fontSize: 42, fontWeight: FontWeight.black, color: Colors.white, letterSpacing: 5)).animate().shimmer(duration: 2.seconds, color: Colors.cyanAccent).fadeIn(duration: 800.ms).slideY(begin: -0.5, end: 0),
+                      const SizedBox(height: 80),
+                      _BouncyBtn(
+                        onTap: _startGame,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(width: 120, height: 120,
+                              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.cyanAccent.withOpacity(0.3))))
+                            .animate(onPlay: (c)=>c.repeat()).scale(begin: const Offset(1,1), end: const Offset(1.8, 1.8), duration: 2.seconds, curve: Curves.easeOut).fadeOut(),
+                            Container(
+                              width: 100, height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const RadialGradient(colors: [Colors.cyanAccent, Colors.blueAccent]),
+                                boxShadow: [BoxShadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: 30, spreadRadius: 5)]
+                              ),
+                              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 60),
                             ),
-                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 55),
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(duration: 600.ms),
+                          ],
+                        ),
+                      ).animate().fadeIn(delay: 400.ms, duration: 600.ms),
+                    ],
                   ),
                 ),
-                const Positioned(bottom: 15, left: 0, right: 0, child: Center(child: Text("v21.0_silent", style: TextStyle(color: Colors.white24, fontSize: 10))))
+                const Positioned(bottom: 20, left: 0, right: 0, child: Center(child: Text("EXPERIENCE THE GLOW", style: TextStyle(color: Colors.white38, fontSize: 12, letterSpacing: 3))))
               ],
             ),
           )
@@ -130,10 +137,7 @@ class _BouncyBtnState extends State<_BouncyBtn> with SingleTickerProviderStateMi
   @override Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_)=>_ctrl.forward(), 
-      onTapUp: (_){
-        if(mounted) _ctrl.reverse(); 
-        widget.onTap();
-      }, 
+      onTapUp: (_){ if(mounted) _ctrl.reverse(); widget.onTap(); }, 
       onTapCancel: (){ if(mounted) _ctrl.reverse(); },
       child: ScaleTransition(scale: _scale, child: widget.child)).animate().slideY(begin: -1, end: 0, duration: 600.ms, delay: widget.delay.ms, curve: Curves.elasticOut).fadeIn();
   }
@@ -142,15 +146,18 @@ class _BouncyBtnState extends State<_BouncyBtn> with SingleTickerProviderStateMi
 class _AboutInfoCard extends StatelessWidget {
   const _AboutInfoCard();
   @override Widget build(BuildContext context) {
-    return Center(child: Material(color:Colors.transparent, child: Container(width: 320, padding: const EdgeInsets.all(25), decoration: BoxDecoration(color: const Color(0xFF151515), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.purpleAccent.withOpacity(0.5))),
+    return Center(child: Material(color:Colors.transparent, child: Container(width: 320, padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: const Color(0xFF050505), borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.cyanAccent.withOpacity(0.5), width: 2), boxShadow: [BoxShadow(color: Colors.cyanAccent.withOpacity(0.1), blurRadius: 40)]),
       child: Column(mainAxisSize:MainAxisSize.min, children:[
-           Text("GlowPath", style:GoogleFonts.orbitron(fontSize:24, color:Colors.purpleAccent, fontWeight: FontWeight.bold)),
-           const SizedBox(height:20), 
-           const Text("Connect all tiles.\nAvoid gaps.\nMaster the glow.", textAlign:TextAlign.center, style:TextStyle(color:Colors.white70)),
-           const Divider(height:40, color:Colors.white12),
-           SizedBox(width: double.infinity, child: OutlinedButton(onPressed:()=>Navigator.pop(context), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24)), child: const Text("CLOSE", style: TextStyle(color: Colors.white))))
+           Text("GLOW PATH", style:GoogleFonts.orbitron(fontSize:28, color:Colors.cyanAccent, fontWeight: FontWeight.bold)),
+           const SizedBox(height:25), 
+           _infoRow(Icons.grid_4x4, "Connect all tiles to win"),
+           _infoRow(Icons.portal, "Use portals to teleport"),
+           _infoRow(Icons.timer, "Beat the boss in time"),
+           const Divider(height:40, color:Colors.white10),
+           SizedBox(width: double.infinity, child: ElevatedButton(onPressed:()=>Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))), child: const Text("CLOSE", style: TextStyle(fontWeight: FontWeight.bold))))
       ]))));
   }
+  Widget _infoRow(IconData i, String t) => Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Row(children: [Icon(i, color: Colors.cyanAccent, size: 20), const SizedBox(width: 15), Text(t, style: const TextStyle(color: Colors.white70))]));
 }
 
 class LevelSelectScreen extends StatefulWidget {
@@ -168,12 +175,12 @@ class _LSS extends State<LevelSelectScreen> with RouteAware {
 
   @override Widget build(BuildContext context) {
     return Scaffold(
-       appBar: AppBar(title:const Text("LEVELS"), centerTitle:true, backgroundColor:Colors.transparent, elevation:0),
+       appBar: AppBar(title:Text("SELECT LEVEL", style: GoogleFonts.orbitron(fontSize: 18, fontWeight: FontWeight.bold)), centerTitle:true, backgroundColor:Colors.transparent, elevation:0),
        extendBodyBehindAppBar: true,
        body: Stack(children:[
           Container(color:Colors.black),
-          GridView.builder(padding:const EdgeInsets.fromLTRB(20, 100, 20, 20), itemCount:ul+12, 
-            gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:4, crossAxisSpacing:15, mainAxisSpacing:15, childAspectRatio:0.9),
+          GridView.builder(padding:const EdgeInsets.fromLTRB(25, 120, 25, 25), itemCount:ul+12, 
+            gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:4, crossAxisSpacing:15, mainAxisSpacing:15, childAspectRatio:0.85),
             itemBuilder:(c,i) {
                bool loc = (i+1)>ul; bool dang = (i+1)%10==0;
                LevelData? prev; if(!loc) prev = LevelGenerator.generate(i);
@@ -181,9 +188,16 @@ class _LSS extends State<LevelSelectScreen> with RouteAware {
                int s = _stars[i.toString()] ?? 0;
                return GestureDetector( 
                  onTap: loc ? null : () => Navigator.push(context, MaterialPageRoute(builder:(_)=>GameScreen(idx:i))), 
-                 child: Container(decoration:BoxDecoration( color: loc ? Colors.white10 : col.withOpacity(0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: loc ? Colors.transparent : col.withOpacity(0.6))),
-                   child: Column(mainAxisAlignment:MainAxisAlignment.center, children:[ if(loc) const Icon(Icons.lock, size:16, color:Colors.white12) else ...[ Text("${i+1}", style:const TextStyle(fontWeight:FontWeight.bold, fontSize:20)), const SizedBox(height:5), Row(mainAxisAlignment:MainAxisAlignment.center, children: List.generate(3, (x) => Icon(Icons.star, size:10, color: x < s ? Colors.amber : Colors.white12))) ]]))
-               );
+                 child: Container(decoration:BoxDecoration( color: loc ? Colors.white.withOpacity(0.02) : col.withOpacity(0.1), borderRadius: BorderRadius.circular(15), border: Border.all(color: loc ? Colors.white10 : col.withOpacity(0.4), width: 1.5)),
+                   child: Column(mainAxisAlignment:MainAxisAlignment.center, children:[ 
+                     if(loc) const Icon(Icons.lock_outline, size:20, color:Colors.white10) 
+                     else ...[ 
+                       Text("${i+1}", style:GoogleFonts.orbitron(fontWeight:FontWeight.black, fontSize:22, color: col)), 
+                       const SizedBox(height:8), 
+                       Row(mainAxisAlignment:MainAxisAlignment.center, children: List.generate(3, (x) => Icon(Icons.star, size:12, color: x < s ? Colors.amber : Colors.white10))) 
+                     ]
+                   ]))
+               ).animate().scale(delay: (i%20 * 50).ms, duration: 400.ms, curve: Curves.easeOut);
             }
           )
        ]),

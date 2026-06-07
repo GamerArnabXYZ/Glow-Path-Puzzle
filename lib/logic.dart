@@ -5,9 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
 
-// ... (Keep LevelGenerator and Solver Classes EXACTLY as they passed last time) ...
-// ... (To save space I am just showing the GameStorage changes) ...
-
 class LevelGenerator {
   static LevelData generate(int levelIndex, {int stage = 0}) {
     int seedBase = (levelIndex * 70000) + (stage * 9999); 
@@ -23,12 +20,9 @@ class LevelGenerator {
   }
 
   static LevelData? _tryGen(int idx, Random rng, bool isDanger) {
-    // --- (Keep your existing Grid/Difficulty logic exactly same) ---
-    // Re-pasting common logic to ensure file is complete
     int rows = 3, cols = 3;
     if(idx>=5){rows=4;cols=3;} if(idx>=9){rows=4;cols=4;} if(idx>=25){rows=5;cols=4;}
     if(idx>=40){rows=6;cols=5;} if(idx>=80){rows=6;cols=6;}
-    
     if(isDanger){rows=5;cols=5;} if(isDanger&&idx>=19){rows=6;cols=6;}
 
     int maxGaps = (idx > 5) ? 1 : 0;
@@ -47,8 +41,20 @@ class LevelGenerator {
       if(g!=start && !gaps.contains(g)) { if(!_isol(g,start,rows,cols,gaps)) gaps.add(g); }
       ax++;
     }
-    if(Solver.solve(rows,cols,start,{start},gaps,total-gaps.length,rng:rng) != null) {
-      return LevelData(idx+1,rows,cols,start,color,gaps,isDanger:isDanger);
+
+    Map<int, int> portals = {};
+    if (idx >= 14 && rng.nextDouble() < 0.4) { // Start portals from Level 15
+      List<int> available = [];
+      for(int i=0; i<total; i++) if(i!=start && !gaps.contains(i)) available.add(i);
+      if(available.length >= 2) {
+        available.shuffle(rng);
+        int p1 = available[0], p2 = available[1];
+        portals[p1] = p2; portals[p2] = p1;
+      }
+    }
+
+    if(Solver.solve(rows,cols,start,{start},gaps,total-gaps.length,portals,rng:rng) != null) {
+      return LevelData(idx+1,rows,cols,start,color,gaps,portals:portals,isDanger:isDanger);
     }
     return null;
   }
@@ -57,23 +63,25 @@ class LevelGenerator {
     var neighbors = getNeighbors(s, r, c);
     return neighbors.every((n) => n == h || gaps.contains(n));
   }
-  static List<int> getNeighbors(int x, int r, int c) {
+
+  static List<int> getNeighbors(int x, int r, int c, {Map<int, int>? portals}) {
     List<int>n=[]; int R=x~/c,C=x%c;
     if(R>0)n.add((R-1)*c+C); if(R<r-1)n.add((R+1)*c+C);
     if(C>0)n.add(R*c+C-1); if(C<c-1)n.add(R*c+C+1);
+    if(portals != null && portals.containsKey(x)) n.add(portals[x]!);
     return n;
   }
 }
 
 class Solver {
-  static List<int>? solve(int r, int c, int cur, Set<int> vis, Set<int> gaps, int targetSize, {Random? rng}) {
+  static List<int>? solve(int r, int c, int cur, Set<int> vis, Set<int> gaps, int targetSize, Map<int, int> portals, {Random? rng}) {
     if(vis.length == targetSize) return vis.toList();
-    List<int> n = LevelGenerator.getNeighbors(cur, r, c);
+    List<int> n = LevelGenerator.getNeighbors(cur, r, c, portals: portals);
     if (rng != null) n.shuffle(rng);
     for(int next in n) {
       if(!vis.contains(next) && !gaps.contains(next)) {
         vis.add(next);
-        var res = solve(r,c,next,vis,gaps,targetSize,rng:rng);
+        var res = solve(r,c,next,vis,gaps,targetSize,portals,rng:rng);
         if(res!=null) return res; vis.remove(next);
       }
     }
@@ -85,15 +93,11 @@ class GameStorage {
   static const String kLvl = 'gp_18_lvl'; 
   static const String kStars = 'gp_18_stars';
   static const String kHints = 'gp_hint_count';
-  
-  // NEW SETTINGS KEYS
   static const String kSetMusic = 'gp_set_music';
   static const String kSetSfx = 'gp_set_sfx_v2';
   static const String kSetVib = 'gp_set_vib';
 
-  static Future<int> getMaxLevel() async { 
-    var p = await SharedPreferences.getInstance(); return p.getInt(kLvl) ?? 1; 
-  }
+  static Future<int> getMaxLevel() async { var p = await SharedPreferences.getInstance(); return p.getInt(kLvl) ?? 1; }
   static Future<Map<String, int>> getStars() async {
     var p = await SharedPreferences.getInstance();
     String? str = p.getString(kStars); return str == null ? {} : Map<String, int>.from(jsonDecode(str));
@@ -108,7 +112,6 @@ class GameStorage {
   static Future<void> useHint() async { var p = await SharedPreferences.getInstance(); int c=p.getInt(kHints)??5; if(c>0)await p.setInt(kHints,c-1); }
   static Future<void> addHints(int a) async { var p = await SharedPreferences.getInstance(); int c=p.getInt(kHints)??5; await p.setInt(kHints, c+a); }
 
-  // --- SETTINGS LOGIC ---
   static Future<double> getMusicVol() async => (await SharedPreferences.getInstance()).getDouble(kSetMusic) ?? 1.0;
   static Future<double> getSfxVol() async => (await SharedPreferences.getInstance()).getDouble(kSetSfx) ?? 1.0;
   static Future<bool> getVibration() async => (await SharedPreferences.getInstance()).getBool(kSetVib) ?? true;

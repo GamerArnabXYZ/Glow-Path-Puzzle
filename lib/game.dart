@@ -30,7 +30,7 @@ class _GS extends State<GameScreen> {
 
   void _hintLogic() async {
     if(_hints<=0) return;
-    List<int>? sol = Solver.solve(_d.rows,_d.cols,_path.last,_path.toSet(),_d.gaps,(_d.rows*_d.cols)-_d.gaps.length);
+    List<int>? sol = Solver.solve(_d.rows,_d.cols,_path.last,_path.toSet(),_d.gaps,(_d.rows*_d.cols)-_d.gaps.length, _d.portals);
     if(sol!=null && sol.length > _path.length){
       setState(() { _path.add(sol[_path.length]); _hints--; GameStorage.useHint(); });
       if(_path.length==((_d.rows*_d.cols)-_d.gaps.length)) _done();
@@ -65,7 +65,10 @@ class _GS extends State<GameScreen> {
     if(_d.gaps.contains(id)) return;
     if(_path.length>1 && id==_path[_path.length-2]) { setState(()=>_path.removeLast()); return; }
     if(id==_path.last||_path.contains(id))return;
-    if(((id~/_d.cols)-(_path.last~/_d.cols)).abs()+((id%_d.cols)-(_path.last%_d.cols)).abs()==1){
+
+    // Check neighbors including portals
+    var neighbors = LevelGenerator.getNeighbors(_path.last, _d.rows, _d.cols, portals: _d.portals);
+    if(neighbors.contains(id)){
       setState((){ _path.add(id); if(_path.length==(_d.rows*_d.cols)-_d.gaps.length)_done(); });
     }
   }
@@ -87,13 +90,16 @@ class _GS extends State<GameScreen> {
 
   @override Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor:Colors.transparent, elevation:0, title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_d.color)),
-        actions: [ IconButton(icon:const Icon(Icons.lightbulb),onPressed:_hintLogic), IconButton(icon:const Icon(Icons.refresh),onPressed:()=>setState(()=>_path=[_d.start])) ]
+      appBar: AppBar(backgroundColor:Colors.transparent, elevation:0, title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_d.color, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        actions: [ 
+          IconButton(icon:const Icon(Icons.lightbulb_outline, color: Colors.amberAccent),onPressed:_hintLogic), 
+          IconButton(icon:const Icon(Icons.refresh, color: Colors.white70),onPressed:()=>setState(()=>_path=[_d.start])) 
+        ]
       ),
       extendBodyBehindAppBar:true,
       body:Stack(children:[
-        Container(color:Colors.black),
-        if(_trans) Center(child: Text("STAGE CLEAR!", style:GoogleFonts.orbitron(fontSize:28, color:Colors.greenAccent))),
+        Container(color:Colors.black).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _d.color.withOpacity(0.05), duration: 3.seconds),
+        if(_trans) Center(child: Text("STAGE CLEAR!", style:GoogleFonts.orbitron(fontSize:28, color:Colors.greenAccent, fontWeight: FontWeight.bold)).animate().scale(duration: 400.ms).fadeIn().shimmer(delay: 400.ms)),
         if(!_trans) Center(child:LayoutBuilder(builder:(c,n){_cs=min((n.maxWidth-30)/_d.cols,(n.maxHeight*0.8)/_d.rows); return GestureDetector(onPanUpdate:(d)=>_inp(d.localPosition),onTapDown:(d)=>_inp(d.localPosition),child:SizedBox(width:_cs*_d.cols,height:_cs*_d.rows,child:Stack(children:[CustomPaint(painter:GridPainter(_d,_cs), size:Size.infinite), CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)])));}))
       ])
     );
@@ -104,12 +110,12 @@ class _WinDialog extends StatelessWidget {
   final int stars; final VoidCallback next;
   const _WinDialog({required this.stars, required this.next});
   @override Widget build(BuildContext context) {
-    return Center(child: Material(color:Colors.transparent, child: Container(padding:const EdgeInsets.all(30), decoration:BoxDecoration(color:Colors.black, borderRadius:BorderRadius.circular(30), border:Border.all(color:Colors.amber)),
+    return Center(child: Material(color:Colors.transparent, child: Container(padding:const EdgeInsets.all(30), decoration:BoxDecoration(color:const Color(0xFF0A0A0A), borderRadius:BorderRadius.circular(30), border:Border.all(color:Colors.amber, width: 2), boxShadow: [BoxShadow(color: Colors.amber.withOpacity(0.2), blurRadius: 20)]),
         child: Column(mainAxisSize:MainAxisSize.min, children:[
-           const Icon(Icons.emoji_events, color:Colors.amber, size:60),
-           const SizedBox(height:20), Text("COMPLETE!", style:GoogleFonts.orbitron(color:Colors.white, fontSize:20)),
-           const SizedBox(height:20), Row(mainAxisAlignment:MainAxisAlignment.center, children: List.generate(3,(i)=>Icon(Icons.star, color:i<stars?Colors.amber:Colors.white10))),
-           const SizedBox(height:30), ElevatedButton(onPressed:next, child:const Text("NEXT LEVEL"))
+           const Icon(Icons.emoji_events, color:Colors.amber, size:70).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+           const SizedBox(height:20), Text("COMPLETE!", style:GoogleFonts.orbitron(color:Colors.white, fontSize:22, fontWeight: FontWeight.bold)),
+           const SizedBox(height:20), Row(mainAxisAlignment:MainAxisAlignment.center, children: List.generate(3,(i)=>Icon(Icons.star, size: 35, color:i<stars?Colors.amber:Colors.white10)).animate(interval: 100.ms).scale(duration: 300.ms)),
+           const SizedBox(height:30), ElevatedButton(onPressed:next, style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))), child:Text("NEXT LEVEL", style: GoogleFonts.orbitron(fontWeight: FontWeight.bold)))
         ]))));
   }
 }

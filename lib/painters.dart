@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models.dart';
+import 'dart:math' as math;
 
 class GridPainter extends CustomPainter {
   final LevelData d; 
@@ -8,19 +9,44 @@ class GridPainter extends CustomPainter {
 
   @override 
   void paint(Canvas c, Size z) {
-    Paint b = Paint()..style=PaintingStyle.stroke..color=Colors.white10; 
-    Paint st= Paint()..style=PaintingStyle.fill..color=d.color.withOpacity(0.2);
+    Paint b = Paint()..style=PaintingStyle.stroke..color=Colors.white10..strokeWidth=1; 
+    Paint st= Paint()..style=PaintingStyle.fill..color=d.color.withOpacity(0.15);
     double g = s*0.05, bx = s-g*2; 
     
-    if(d.isDanger) b.color = Colors.redAccent.withOpacity(0.3);
+    if(d.isDanger) b.color = Colors.redAccent.withOpacity(0.2);
 
     for(int i=0; i<d.rows*d.cols; i++) {
       if (d.gaps.contains(i)) continue;
       double x = (i%d.cols)*s + g, y = (i~/d.cols)*s + g;
-      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), Radius.circular(4)), b);
-      if(i==d.start) c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), Radius.circular(4)), st);
+      
+      // Draw Tile Background
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), const Radius.circular(8)), b);
+      if(i==d.start) {
+        c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), const Radius.circular(8)), st);
+        // Start Indicator
+        c.drawCircle(Offset(x+bx/2, y+bx/2), bx*0.1, Paint()..color=d.color.withOpacity(0.5));
+      }
+
+      // Draw Portals
+      if(d.portals.containsKey(i)) {
+        _drawPortal(c, Offset(x+bx/2, y+bx/2), bx*0.3, d.color);
+      }
     }
   }
+
+  void _drawPortal(Canvas c, Offset center, double radius, Color color) {
+    Paint p = Paint()..style=PaintingStyle.stroke..color=color.withOpacity(0.6)..strokeWidth=2;
+    c.drawCircle(center, radius, p);
+    c.drawCircle(center, radius*0.7, p..color=color.withOpacity(0.3));
+    
+    // Portal "Swirl" effect
+    final swirlPaint = Paint()..color=color..style=PaintingStyle.fill;
+    for(int i=0; i<4; i++) {
+      double angle = i * (math.pi/2);
+      c.drawCircle(Offset(center.dx + math.cos(angle)*radius, center.dy + math.sin(angle)*radius), 3, swirlPaint);
+    }
+  }
+
   @override bool shouldRepaint(covariant GridPainter o)=>false;
 }
 
@@ -36,20 +62,40 @@ class PathPainter extends CustomPainter {
     double g=s*0.05, bx=s-g*2; 
     Color cl=d.color;
     
-    Paint f = Paint()..style=PaintingStyle.fill..color=cl.withOpacity(0.4);
-    Paint l = Paint()..style=PaintingStyle.stroke..color=cl..strokeWidth=s*0.15..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round;
+    Paint f = Paint()..style=PaintingStyle.fill..color=cl.withOpacity(0.35);
+    Paint l = Paint()..style=PaintingStyle.stroke..color=cl..strokeWidth=s*0.2..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round;
+    
+    // Add glow to line
+    l.maskFilter = const MaskFilter.blur(BlurStyle.solid, 2);
+
     Offset gc(int i) => Offset((i%d.cols)*s+s/2, (i~/d.cols)*s+s/2);
     
-    for(int i=0; i<p.length-1; i++) c.drawLine(gc(p[i]), gc(p[i+1]), l);
-    
-    for (int i in p) {
-      double x = (i%d.cols)*s+g, y = (i~/d.cols)*s+g;
-      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), Radius.circular(6)), f);
-      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), Radius.circular(6)), Paint()..color=cl.withOpacity(0.8)..style=PaintingStyle.stroke..strokeWidth=1.5);
+    // Draw connections
+    for(int i=0; i<p.length-1; i++) {
+      // Don't draw line if it's a portal jump (distance > 1)
+      int cur = p[i], next = p[i+1];
+      int diff = (cur%d.cols - next%d.cols).abs() + (cur~/d.cols - next~/d.cols).abs();
+      if(diff == 1) {
+        c.drawLine(gc(cur), gc(next), l);
+      } else {
+        // Portal jump visual: small dots at entry/exit
+        c.drawCircle(gc(cur), s*0.1, Paint()..color=cl.withOpacity(0.5));
+        c.drawCircle(gc(next), s*0.1, Paint()..color=cl.withOpacity(0.5));
+      }
     }
     
+    // Draw filled tiles
+    for (int i in p) {
+      double x = (i%d.cols)*s+g, y = (i~/d.cols)*s+g;
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), const Radius.circular(10)), f);
+      // Border for filled tile
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), const Radius.circular(10)), Paint()..color=cl.withOpacity(0.8)..style=PaintingStyle.stroke..strokeWidth=2);
+    }
+    
+    // Draw Head (Current Position)
     double hx = (p.last%d.cols)*s+g, hy=(p.last~/d.cols)*s+g;
-    c.drawRect(Rect.fromLTWH(hx+bx*0.35, hy+bx*0.35, bx*0.3, bx*0.3), Paint()..color=Colors.white);
+    final headPaint = Paint()..color=Colors.white..style=PaintingStyle.fill..maskFilter=const MaskFilter.blur(BlurStyle.solid, 3);
+    c.drawCircle(Offset(hx+bx/2, hy+bx/2), bx*0.2, headPaint);
   }
   @override bool shouldRepaint(covariant PathPainter o)=>true;
 }
