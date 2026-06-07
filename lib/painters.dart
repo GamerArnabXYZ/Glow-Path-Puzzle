@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'models.dart';
 import 'dart:math' as math;
 
@@ -19,15 +20,12 @@ class GridPainter extends CustomPainter {
       if (d.gaps.contains(i)) continue;
       double x = (i%d.cols)*s + g, y = (i~/d.cols)*s + g;
       
-      // Draw Tile Background
       c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), const Radius.circular(8)), b);
       if(i==d.start) {
         c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), const Radius.circular(8)), st);
-        // Start Indicator
         c.drawCircle(Offset(x+bx/2, y+bx/2), bx*0.1, Paint()..color=d.color.withOpacity(0.5));
       }
 
-      // Draw Portals
       if(d.portals.containsKey(i)) {
         _drawPortal(c, Offset(x+bx/2, y+bx/2), bx*0.3, d.color);
       }
@@ -39,7 +37,6 @@ class GridPainter extends CustomPainter {
     c.drawCircle(center, radius, p);
     c.drawCircle(center, radius*0.7, p..color=color.withOpacity(0.3));
     
-    // Portal "Swirl" effect
     final swirlPaint = Paint()..color=color..style=PaintingStyle.fill;
     for(int i=0; i<4; i++) {
       double angle = i * (math.pi/2);
@@ -65,36 +62,31 @@ class PathPainter extends CustomPainter {
     Paint f = Paint()..style=PaintingStyle.fill..color=cl.withOpacity(0.35);
     Paint l = Paint()..style=PaintingStyle.stroke..color=cl..strokeWidth=s*0.2..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round;
     
-    // Add glow to line
-    l.maskFilter = const MaskFilter.blur(BlurStyle.solid, 2);
+    // Web performance: Avoid MaskFilter.blur
+    if(!kIsWeb) l.maskFilter = const MaskFilter.blur(BlurStyle.solid, 2);
 
     Offset gc(int i) => Offset((i%d.cols)*s+s/2, (i~/d.cols)*s+s/2);
     
-    // Draw connections
     for(int i=0; i<p.length-1; i++) {
-      // Don't draw line if it's a portal jump (distance > 1)
       int cur = p[i], next = p[i+1];
       int diff = (cur%d.cols - next%d.cols).abs() + (cur~/d.cols - next~/d.cols).abs();
       if(diff == 1) {
         c.drawLine(gc(cur), gc(next), l);
       } else {
-        // Portal jump visual: small dots at entry/exit
         c.drawCircle(gc(cur), s*0.1, Paint()..color=cl.withOpacity(0.5));
         c.drawCircle(gc(next), s*0.1, Paint()..color=cl.withOpacity(0.5));
       }
     }
     
-    // Draw filled tiles
     for (int i in p) {
       double x = (i%d.cols)*s+g, y = (i~/d.cols)*s+g;
       c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), const Radius.circular(10)), f);
-      // Border for filled tile
       c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,bx,bx), const Radius.circular(10)), Paint()..color=cl.withOpacity(0.8)..style=PaintingStyle.stroke..strokeWidth=2);
     }
     
-    // Draw Head (Current Position)
     double hx = (p.last%d.cols)*s+g, hy=(p.last~/d.cols)*s+g;
-    final headPaint = Paint()..color=Colors.white..style=PaintingStyle.fill..maskFilter=const MaskFilter.blur(BlurStyle.solid, 3);
+    final headPaint = Paint()..color=Colors.white..style=PaintingStyle.fill;
+    if(!kIsWeb) headPaint.maskFilter = const MaskFilter.blur(BlurStyle.solid, 3);
     c.drawCircle(Offset(hx+bx/2, hy+bx/2), bx*0.2, headPaint);
   }
   @override bool shouldRepaint(covariant PathPainter o)=>true;

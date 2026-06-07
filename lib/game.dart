@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -66,7 +67,6 @@ class _GS extends State<GameScreen> {
     if(_path.length>1 && id==_path[_path.length-2]) { setState(()=>_path.removeLast()); return; }
     if(id==_path.last||_path.contains(id))return;
 
-    // Check neighbors including portals
     var neighbors = LevelGenerator.getNeighbors(_path.last, _d.rows, _d.cols, portals: _d.portals);
     if(neighbors.contains(id)){
       setState((){ _path.add(id); if(_path.length==(_d.rows*_d.cols)-_d.gaps.length)_done(); });
@@ -98,7 +98,9 @@ class _GS extends State<GameScreen> {
       ),
       extendBodyBehindAppBar:true,
       body:Stack(children:[
-        Container(color:Colors.black).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _d.color.withOpacity(0.05), duration: 3.seconds),
+        kIsWeb 
+          ? Container(color: Colors.black) 
+          : Container(color: Colors.black).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _d.color.withOpacity(0.05), duration: 3.seconds),
         if(_trans) Center(child: Text("STAGE CLEAR!", style:GoogleFonts.orbitron(fontSize:28, color:Colors.greenAccent, fontWeight: FontWeight.bold)).animate().scale(duration: 400.ms).fadeIn().shimmer(delay: 400.ms)),
         if(!_trans) Center(child:LayoutBuilder(builder:(c,n){_cs=min((n.maxWidth-30)/_d.cols,(n.maxHeight*0.8)/_d.rows); return GestureDetector(onPanUpdate:(d)=>_inp(d.localPosition),onTapDown:(d)=>_inp(d.localPosition),child:SizedBox(width:_cs*_d.cols,height:_cs*_d.rows,child:Stack(children:[CustomPaint(painter:GridPainter(_d,_cs), size:Size.infinite), CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)])));}))
       ])
