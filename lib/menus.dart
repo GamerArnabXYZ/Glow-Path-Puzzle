@@ -151,7 +151,7 @@ class _AboutInfoCard extends StatelessWidget {
            Text("GLOW PATH", style:GoogleFonts.orbitron(fontSize:28, color:Colors.cyanAccent, fontWeight: FontWeight.bold)),
            const SizedBox(height:25), 
            _infoRow(Icons.grid_4x4, "Connect all tiles to win"),
-           _infoRow(Icons.vortex, "Use portals to teleport"),
+           _infoRow(Icons.cyclone, "Use portals to teleport"),
            _infoRow(Icons.timer, "Beat the boss in time"),
            const Divider(height:40, color:Colors.white10),
            SizedBox(width: double.infinity, child: ElevatedButton(onPressed:()=>Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))), child: const Text("CLOSE", style: TextStyle(fontWeight: FontWeight.bold))))
