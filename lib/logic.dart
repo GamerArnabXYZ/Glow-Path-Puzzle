@@ -44,7 +44,7 @@ class LevelGenerator {
     int ax=0;
     while(gaps.length<gapCount && ax<200){
       int g=rng.nextInt(total);
-      if(g!=start && !gaps.contains(g)) { if(!_isol(g,start,rows,cols)) gaps.add(g); }
+      if(g!=start && !gaps.contains(g)) { if(!_isol(g,start,rows,cols,gaps)) gaps.add(g); }
       ax++;
     }
     if(Solver.solve(rows,cols,start,{start},gaps,total-gaps.length,rng:rng) != null) {
@@ -53,7 +53,10 @@ class LevelGenerator {
     return null;
   }
   
-  static bool _isol(int h, int s, int r, int c) => getNeighbors(s,r,c).every((n) => n==h); // Simplified
+  static bool _isol(int h, int s, int r, int c, Set<int> gaps) {
+    var neighbors = getNeighbors(s, r, c);
+    return neighbors.every((n) => n == h || gaps.contains(n));
+  }
   static List<int> getNeighbors(int x, int r, int c) {
     List<int>n=[]; int R=x~/c,C=x%c;
     if(R>0)n.add((R-1)*c+C); if(R<r-1)n.add((R+1)*c+C);

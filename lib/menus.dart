@@ -128,7 +128,13 @@ class _BouncyBtnState extends State<_BouncyBtn> with SingleTickerProviderStateMi
   @override void initState() { super.initState(); _ctrl = AnimationController(vsync: this, duration: 100.ms); _scale = Tween<double>(begin: 1.0, end: 0.85).animate(_ctrl); }
   @override void dispose() { _ctrl.dispose(); super.dispose(); }
   @override Widget build(BuildContext context) {
-    return GestureDetector(onTapDown: (_)=>_ctrl.forward(), onTapUp: (_){_ctrl.reverse(); widget.onTap();}, onTapCancel: ()=>_ctrl.reverse(),
+    return GestureDetector(
+      onTapDown: (_)=>_ctrl.forward(), 
+      onTapUp: (_){
+        if(mounted) _ctrl.reverse(); 
+        widget.onTap();
+      }, 
+      onTapCancel: (){ if(mounted) _ctrl.reverse(); },
       child: ScaleTransition(scale: _scale, child: widget.child)).animate().slideY(begin: -1, end: 0, duration: 600.ms, delay: widget.delay.ms, curve: Curves.elasticOut).fadeIn();
   }
 }

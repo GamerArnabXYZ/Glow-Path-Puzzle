@@ -37,7 +37,26 @@ class _GS extends State<GameScreen> {
     }
   }
 
-  void _fail() { _t?.cancel(); showDialog(barrierDismissible:false,context:context,builder:(_)=>AlertDialog(backgroundColor:Colors.red.shade900, title: const Text("TIME UP!"), actions:[TextButton(onPressed:()=>Navigator.pop(context), child: const Text("RETRY"))])); }
+  void _fail() {
+    _t?.cancel();
+    showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.red.shade900,
+        title: const Text("TIME UP!"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _load();
+            },
+            child: const Text("RETRY", style: TextStyle(color: Colors.white)),
+          )
+        ],
+      ),
+    );
+  }
 
   void _inp(Offset o) {
     if(_win||_trans||_cs==0||(_dang&&_timeLeft<=0)) return;
