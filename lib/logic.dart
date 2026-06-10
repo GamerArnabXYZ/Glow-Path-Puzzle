@@ -78,7 +78,7 @@ class LevelGenerator {
 
     int targetSize = total - gaps.length;
     var sol = Solver.solve(rows, cols, start, {start}, gaps, targetSize, portals, keyTile: key, lockTile: lock, oneWays: oneWays, limit: 3000);
-    if(sol != null) return LevelData(idx+1, rows, cols, start, color, gaps, portals: portals, keyTile: key, lockTile: lock, oneWays: oneWays, isDanger: isDanger);
+    if(sol != null) return LevelData(idx+1, rows, cols, start, color, gaps, portals: portals, keyTile: key, lockTile: lock, oneWayTiles: oneWays, isDanger: isDanger);
     
     return null;
   }
