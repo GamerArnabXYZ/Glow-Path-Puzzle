@@ -17,24 +17,26 @@ class GameScreen extends StatefulWidget {
 class _GS extends State<GameScreen> {
   late LevelData _d; List<int> _path = []; bool _win = false; double _cs = 0;
   int _stgCur=0,_stgTot=1; bool _dang=false,_trans=false; Timer? _t; int _elap=0,_timeLeft=10;int _hints=0;
+  bool _loading = true;
   
   @override void initState() { super.initState(); _loadSets(); _initLvl(); }
   @override void dispose() { _t?.cancel(); super.dispose(); }
 
   void _loadSets() async { int h = await GameStorage.getHints(); setState(() {_hints=h;}); }
   void _initLvl() { _dang=(widget.idx+1)%10==0; _stgTot=_dang?3:1; _stgCur=0; _elap=0; _load(); }
+  
   void _load() async {
     _t?.cancel(); 
-    setState(() => _trans = true); // Show a brief loading state/overlay
+    if(mounted) setState(() { _loading = true; _trans = false; });
     
-    // Give UI a frame to breathe
-    await Future.delayed(50.ms);
+    // Give UI a frame to show the loader
+    await Future.delayed(100.ms);
     
     _d = LevelGenerator.generate(widget.idx, stage:_stgCur); 
     _path=[_d.start]; _win=false; _trans=false; _timeLeft=10;
     
     _t=Timer.periodic(1.seconds, (t){if(mounted)setState((){if(_dang){_timeLeft--;if(_timeLeft<=0)_fail();}else{_elap++;}} );});
-    if(mounted) setState((){});
+    if(mounted) setState((){ _loading = false; });
   }
 
   void _hintLogic() async {
@@ -68,7 +70,7 @@ class _GS extends State<GameScreen> {
   }
 
   void _inp(Offset o) {
-    if(_win||_trans||_cs==0||(_dang&&_timeLeft<=0)) return;
+    if(_win||_trans||_loading||_cs==0||(_dang&&_timeLeft<=0)) return;
     int c=(o.dx/_cs).floor(); int r=(o.dy/_cs).floor();
     if(c<0||c>=_d.cols||r<0||r>=_d.rows)return; int id=r*_d.cols+c;
     if(_d.gaps.contains(id)) return;
@@ -99,19 +101,26 @@ class _GS extends State<GameScreen> {
   @override Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(backgroundColor:Colors.transparent, elevation:0, title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_d.color, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+      appBar: AppBar(backgroundColor:Colors.transparent, elevation:0, title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_loading ? Colors.white24 : _d.color, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         actions: [ 
-          IconButton(icon:const Icon(Icons.lightbulb_outline, color: Colors.amberAccent),onPressed:_hintLogic), 
-          IconButton(icon:const Icon(Icons.refresh, color: Colors.white70),onPressed:()=>setState(()=>_path=[_d.start])) 
+          IconButton(icon:const Icon(Icons.lightbulb_outline, color: Colors.amberAccent),onPressed:_loading ? null : _hintLogic), 
+          IconButton(icon:const Icon(Icons.refresh, color: Colors.white70),onPressed:()=>setState(()=>_path=[_loading ? 0 : _d.start])) 
         ]
       ),
       extendBodyBehindAppBar:true,
       body:Stack(children:[
         Container(color: Colors.black),
         if (!kIsWeb) 
-          Container(color: Colors.transparent).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _d.color.withOpacity(0.05), duration: 3.seconds),
-        if(_trans) Center(child: Text("STAGE CLEAR!", style:GoogleFonts.orbitron(fontSize:28, color:Colors.greenAccent, fontWeight: FontWeight.bold)).animate().scale(duration: 400.ms).fadeIn().shimmer(delay: 400.ms)),
-        if(!_trans) Center(child:LayoutBuilder(builder:(c,n){_cs=min((n.maxWidth-30)/_d.cols,(n.maxHeight*0.8)/_d.rows); return GestureDetector(onPanUpdate:(d)=>_inp(d.localPosition),onTapDown:(d)=>_inp(d.localPosition),child:SizedBox(width:_cs*_d.cols,height:_cs*_d.rows,child:Stack(children:[CustomPaint(painter:GridPainter(_d,_cs), size:Size.infinite), CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)])));}))
+          Container(color: Colors.transparent).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _loading ? Colors.transparent : _d.color.withOpacity(0.05), duration: 3.seconds),
+        
+        if(_loading) Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const CircularProgressIndicator(color: Colors.cyanAccent),
+          const SizedBox(height: 20),
+          Text("GENERATING LEVEL...", style: GoogleFonts.orbitron(color: Colors.cyanAccent, fontSize: 16)),
+        ])),
+
+        if(!_loading && _trans) Center(child: Text("STAGE CLEAR!", style:GoogleFonts.orbitron(fontSize:28, color:Colors.greenAccent, fontWeight: FontWeight.bold)).animate().scale(duration: 400.ms).fadeIn().shimmer(delay: 400.ms)),
+        if(!_loading && !_trans) Center(child:LayoutBuilder(builder:(c,n){_cs=min((n.maxWidth-30)/_d.cols,(n.maxHeight*0.8)/_d.rows); return GestureDetector(onPanUpdate:(d)=>_inp(d.localPosition),onTapDown:(d)=>_inp(d.localPosition),child:SizedBox(width:_cs*_d.cols,height:_cs*_d.rows,child:Stack(children:[CustomPaint(painter:GridPainter(_d,_cs), size:Size.infinite), CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)])));}))
       ])
     );
   }

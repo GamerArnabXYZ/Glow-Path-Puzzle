@@ -16,10 +16,8 @@ class LevelGenerator {
       LevelData? candidate = _tryGen(levelIndex, rng, isDanger);
       if (candidate != null) return candidate;
       attempts++; 
-      if (attempts > 500) { // Safety break
-         // Fallback to a simpler version or different seed if stuck
-         seedBase += 1; attempts = 0;
-      }
+      // If we can't find a solution in 100 seeds, something is too hard, skip seed base
+      if (attempts > 100) { seedBase += rng.nextInt(1000); attempts = 0; }
     }
   }
 
@@ -57,20 +55,19 @@ class LevelGenerator {
       }
     }
 
-    // Fast check for isolated tiles before solving
     int targetSize = total - gaps.length;
+    // Pre-check: All non-gap tiles must have at least one reachable non-gap neighbor
     for(int i=0; i<total; i++) {
       if(!gaps.contains(i)) {
-        var n = getNeighbors(i, rows, cols, portals: portals);
-        int available = 0;
-        for(int nb in n) if(!gaps.contains(nb)) available++;
-        if(available == 0 && targetSize > 1) return null; // Isolated tile
+        var nbs = getNeighbors(i, rows, cols, portals: portals);
+        if(nbs.every((nb) => gaps.contains(nb)) && targetSize > 1) return null;
       }
     }
 
-    if(Solver.solve(rows,cols,start,{start},gaps,targetSize,portals,rng:rng) != null) {
-      return LevelData(idx+1,rows,cols,start,color,gaps,portals:portals,isDanger:isDanger);
-    }
+    // Solve with complexity limit (max 2000 steps)
+    var sol = Solver.solve(rows, cols, start, {start}, gaps, targetSize, portals, limit: 2000);
+    if(sol != null) return LevelData(idx+1, rows, cols, start, color, gaps, portals: portals, isDanger: isDanger);
+    
     return null;
   }
   
@@ -85,43 +82,65 @@ class LevelGenerator {
     if(C>0)n.add(R*c+C-1); if(C<c-1)n.add(R*c+C+1);
     if(portals != null && portals.containsKey(x)) {
       int p = portals[x]!;
-      if (!n.contains(p)) n.add(p); // Remove duplicates
+      if (!n.contains(p)) n.add(p);
     }
     return n;
   }
 }
 
 class Solver {
-  static List<int>? solve(int r, int c, int cur, Set<int> vis, Set<int> gaps, int targetSize, Map<int, int> portals, {Random? rng}) {
+  static int _steps = 0;
+
+  static List<int>? solve(int r, int c, int cur, Set<int> vis, Set<int> gaps, int targetSize, Map<int, int> portals, {int limit = 10000}) {
+    _steps = 0;
+    return _solveInternal(r, c, cur, vis, gaps, targetSize, portals, limit);
+  }
+
+  static List<int>? _solveInternal(int r, int c, int cur, Set<int> vis, Set<int> gaps, int targetSize, Map<int, int> portals, int limit) {
+    _steps++;
+    if(_steps > limit) return null; // Early exit if too complex
     if(vis.length == targetSize) return vis.toList();
     
-    List<int> n = LevelGenerator.getNeighbors(cur, r, c, portals: portals);
-    if (rng != null) n.shuffle(rng);
-
-    // Dead-end detection: if any unvisited tile becomes isolated, backtrack early
-    for(int next in n) {
+    List<int> neighbors = LevelGenerator.getNeighbors(cur, r, c, portals: portals);
+    
+    // Warnsdorff's Heuristic: Sort neighbors by their degree (number of available unvisited neighbors)
+    // Tiles with fewer available neighbors should be visited first to avoid isolating them.
+    List<MapEntry<int, int>> sorted = [];
+    for(int next in neighbors) {
       if(!vis.contains(next) && !gaps.contains(next)) {
-        vis.add(next);
-        
-        // Simple connectivity heuristic: check if we just isolated a tile
-        bool isolated = false;
-        // Only check neighbors of 'cur' and 'next' for efficiency
-        List<int> check = LevelGenerator.getNeighbors(cur, r, c, portals: portals);
-        for(int tile in check) {
-          if(!vis.contains(tile) && !gaps.contains(tile)) {
-            var nbs = LevelGenerator.getNeighbors(tile, r, c, portals: portals);
-            int reachable = 0;
-            for(int nb in nbs) if(!vis.contains(nb) && !gaps.contains(nb)) reachable++;
-            if(reachable == 0 && vis.length < targetSize) { isolated = true; break; }
-          }
+        int degree = 0;
+        var nextNeighbors = LevelGenerator.getNeighbors(next, r, c, portals: portals);
+        for(int nb in nextNeighbors) {
+          if(!vis.contains(nb) && !gaps.contains(nb)) degree++;
         }
-
-        if(!isolated) {
-          var res = solve(r,c,next,vis,gaps,targetSize,portals,rng:rng);
-          if(res!=null) return res;
-        }
-        vis.remove(next);
+        sorted.add(MapEntry(next, degree));
       }
+    }
+
+    // Sort by degree ascending
+    sorted.sort((a, b) => a.value.compareTo(b.value));
+
+    for(var entry in sorted) {
+      int next = entry.key;
+      vis.add(next);
+      
+      // Fast connectivity check: if any unvisited tile (other than the goal) has 0 neighbors, it's a dead end
+      bool deadEnd = false;
+      // We only need to check neighbors of 'cur' that were NOT chosen as 'next'
+      for(int nb in neighbors) {
+        if(!vis.contains(nb) && !gaps.contains(nb)) {
+          var nbsOfNb = LevelGenerator.getNeighbors(nb, r, c, portals: portals);
+          int free = 0;
+          for(int f in nbsOfNb) if(!vis.contains(f) && !gaps.contains(f)) free++;
+          if(free == 0 && vis.length < targetSize) { deadEnd = true; break; }
+        }
+      }
+
+      if(!deadEnd) {
+        var res = _solveInternal(r, c, next, vis, gaps, targetSize, portals, limit);
+        if(res != null) return res;
+      }
+      vis.remove(next);
     }
     return null;
   }
