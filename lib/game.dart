@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -14,10 +14,10 @@ class GameScreen extends StatefulWidget {
   @override State<GameScreen> createState() => _GS();
 }
 
-class _GS extends State<GameScreen> {
+class _GS extends State<GameScreen> with TickerProviderStateMixin {
   late LevelData _d; List<int> _path = []; bool _win = false; double _cs = 0;
   int _stgCur=0,_stgTot=1; bool _dang=false,_trans=false; Timer? _t; int _elap=0,_timeLeft=10;int _hints=0;
-  bool _loading = true;
+  bool _loading = true; bool _hasKey = false;
   
   @override void initState() { super.initState(); _loadSets(); _initLvl(); }
   @override void dispose() { _t?.cancel(); super.dispose(); }
@@ -27,23 +27,21 @@ class _GS extends State<GameScreen> {
   
   void _load() async {
     _t?.cancel(); 
-    if(mounted) setState(() { _loading = true; _trans = false; });
-    
-    // Give UI a frame to show the loader
+    if(mounted) setState(() { _loading = true; _trans = false; _hasKey = false; });
     await Future.delayed(const Duration(milliseconds: 100));
-    
     _d = await LevelGenerator.generate(widget.idx, stage:_stgCur); 
     _path=[_d.start]; _win=false; _trans=false; _timeLeft=10;
-    
     _t=Timer.periodic(const Duration(seconds: 1), (t){if(mounted)setState((){if(_dang){_timeLeft--;if(_timeLeft<=0)_fail();}else{_elap++;}} );});
     if(mounted) setState((){ _loading = false; });
   }
 
   void _hintLogic() async {
     if(_hints<=0) return;
-    List<int>? sol = Solver.solve(_d.rows,_d.cols,_path.last,_path.toSet(),_d.gaps,(_d.rows*_d.cols)-_d.gaps.length, _d.portals);
+    List<int>? sol = Solver.solve(_d.rows,_d.cols,_path.last,_path.toSet(),_d.gaps,(_d.rows*_d.cols)-_d.gaps.length, _d.portals, keyTile: _d.keyTile, lockTile: _d.lockTile, oneWays: _d.oneWayTiles);
     if(sol!=null && sol.length > _path.length){
-      setState(() { _path.add(sol[_path.length]); _hints--; GameStorage.useHint(); });
+      int nextId = sol[_path.length];
+      if(nextId == _d.keyTile) _hasKey = true;
+      setState(() { _path.add(nextId); _hints--; GameStorage.useHint(); });
       if(_path.length==((_d.rows*_d.cols)-_d.gaps.length)) _done();
     }
   }
@@ -55,15 +53,9 @@ class _GS extends State<GameScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.red.shade900,
-        title: const Text("TIME UP!"),
+        title: Text("TIME UP!", style: GoogleFonts.orbitron(color: Colors.white)),
         actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _load();
-            },
-            child: const Text("RETRY", style: TextStyle(color: Colors.white)),
-          )
+          TextButton(onPressed: () { Navigator.pop(context); _load(); }, child: const Text("RETRY", style: TextStyle(color: Colors.white)))
         ],
       ),
     );
@@ -71,15 +63,29 @@ class _GS extends State<GameScreen> {
 
   void _inp(Offset o) {
     if(_win||_trans||_loading||_cs==0||(_dang&&_timeLeft<=0)) return;
-    int c=(o.dx/_cs).floor(); int r=(o.dy/_cs).floor();
+    int c=(o.dx/_cs).floor(), r=(o.dy/_cs).floor();
     if(c<0||c>=_d.cols||r<0||r>=_d.rows)return; int id=r*_d.cols+c;
     if(_d.gaps.contains(id)) return;
-    if(_path.length>1 && id==_path[_path.length-2]) { setState(()=>_path.removeLast()); return; }
+    
+    if(_path.length>1 && id==_path[_path.length-2]) { 
+      setState(() {
+        int removed = _path.removeLast();
+        if(removed == _d.keyTile) _hasKey = false;
+      }); 
+      return; 
+    }
     if(id==_path.last||_path.contains(id))return;
 
-    var neighbors = LevelGenerator.getNeighbors(_path.last, _d.rows, _d.cols, portals: _d.portals);
+    // Logic for Lock
+    if(id == _d.lockTile && !_hasKey) return;
+
+    var neighbors = LevelGenerator.getNeighbors(_path.last, _d.rows, _d.cols, portals: _d.portals, oneWays: _d.oneWayTiles);
     if(neighbors.contains(id)){
-      setState((){ _path.add(id); if(_path.length==(_d.rows*_d.cols)-_d.gaps.length)_done(); });
+      setState((){ 
+        _path.add(id); 
+        if(id == _d.keyTile) _hasKey = true;
+        if(_path.length==(_d.rows*_d.cols)-_d.gaps.length)_done(); 
+      });
     }
   }
 
@@ -93,20 +99,11 @@ class _GS extends State<GameScreen> {
       if(mounted) {
         showGeneralDialog(
           context: context, 
-          barrierColor: Colors.black.withOpacity(0.9), // Darker barrier
+          barrierColor: Colors.black.withOpacity(0.9),
           pageBuilder:(c,a,b)=>const SizedBox(), 
           transitionBuilder:(c,a,b,ch)=>ScaleTransition(scale:a, child:_WinDialog(stars:s, next:(){
             Navigator.pop(context); 
-            Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => GameScreen(idx: widget.idx + 1),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-                transitionDuration: const Duration(milliseconds: 300),
-              ),
-            );
+            Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (context, a, sa) => GameScreen(idx: widget.idx + 1), transitionsBuilder: (c, a, sa, child) => FadeTransition(opacity: a, child: child), transitionDuration: 300.ms));
         })));
       }
     }
@@ -118,14 +115,14 @@ class _GS extends State<GameScreen> {
       appBar: AppBar(backgroundColor:Colors.transparent, elevation:0, title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_loading ? Colors.white24 : _d.color, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         actions: [ 
           IconButton(icon:const Icon(Icons.lightbulb_outline, color: Colors.amberAccent),onPressed:_loading ? null : _hintLogic), 
-          IconButton(icon:const Icon(Icons.refresh, color: Colors.white70),onPressed:()=>setState(()=>_path=[_loading ? 0 : _d.start])) 
+          IconButton(icon:const Icon(Icons.refresh, color: Colors.white70),onPressed:()=>setState((){_path=[_loading?0:_d.start]; _hasKey=false; })) 
         ]
       ),
       extendBodyBehindAppBar:true,
       body:Stack(children:[
         Container(color: Colors.black),
-        if (!kIsWeb) 
-          Container(color: Colors.transparent).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _loading ? Colors.transparent : _d.color.withOpacity(0.05), duration: 3.seconds),
+        if (!kIsWeb && !_loading) 
+          Container(color: Colors.transparent).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _d.color.withOpacity(0.05), duration: 3.seconds),
         
         if(_loading) Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
           const CircularProgressIndicator(color: Colors.cyanAccent),
@@ -134,9 +131,37 @@ class _GS extends State<GameScreen> {
         ])),
 
         if(!_loading && _trans) Center(child: Text("STAGE CLEAR!", style:GoogleFonts.orbitron(fontSize:28, color:Colors.greenAccent, fontWeight: FontWeight.bold)).animate().scale(duration: 400.ms).fadeIn().shimmer(delay: 400.ms)),
-        if(!_loading && !_trans) Center(child:LayoutBuilder(builder:(c,n){_cs=min((n.maxWidth-30)/_d.cols,(n.maxHeight*0.8)/_d.rows); return GestureDetector(onPanUpdate:(d)=>_inp(d.localPosition),onTapDown:(d)=>_inp(d.localPosition),child:SizedBox(width:_cs*_d.cols,height:_cs*_d.rows,child:Stack(children:[CustomPaint(painter:GridPainter(_d,_cs), size:Size.infinite), CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)])));}))
+        
+        if(!_loading && !_trans) Center(child:LayoutBuilder(builder:(c,n){
+          _cs=min((n.maxWidth-30)/_d.cols,(n.maxHeight*0.8)/_d.rows); 
+          return GestureDetector(
+            onPanUpdate:(d)=>_inp(d.localPosition),
+            onTapDown:(d)=>_inp(d.localPosition),
+            child:SizedBox(width:_cs*_d.cols,height:_cs*_d.rows,child:Stack(children:[
+              CustomPaint(painter:GridPainter(_d,_cs, hasKey: _hasKey), size:Size.infinite), 
+              CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)
+            ]))
+          );
+        })),
+        
+        if(_win) const Positioned.fill(child: IgnorePointer(child: _ParticleCelebration())),
       ])
     );
+  }
+}
+
+class _ParticleCelebration extends StatelessWidget {
+  const _ParticleCelebration();
+  @override Widget build(BuildContext context) {
+    return Stack(children: List.generate(20, (i) {
+      final rng = Random();
+      return Positioned(
+        left: rng.nextDouble() * MediaQuery.of(context).size.width,
+        top: rng.nextDouble() * MediaQuery.of(context).size.height,
+        child: Container(width: 8, height: 8, decoration: BoxDecoration(color: [Colors.cyanAccent, Colors.purpleAccent, Colors.yellowAccent][rng.nextInt(3)], shape: BoxShape.circle))
+        .animate().moveY(begin: 0, end: -100 - rng.nextDouble()*200, duration: 1.seconds, curve: Curves.easeOut).fadeOut(),
+      );
+    }));
   }
 }
 
