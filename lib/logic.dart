@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
 
 class LevelGenerator {
-  static LevelData generate(int levelIndex, {int stage = 0}) {
+  static Future<LevelData> generate(int levelIndex, {int stage = 0}) async {
     int seedBase = (levelIndex * 70000) + (stage * 9999); 
     int attempts = 0;
     bool isDanger = (levelIndex + 1) % 10 == 0;
@@ -16,7 +16,10 @@ class LevelGenerator {
       LevelData? candidate = _tryGen(levelIndex, rng, isDanger);
       if (candidate != null) return candidate;
       attempts++; 
-      // If we can't find a solution in 100 seeds, something is too hard, skip seed base
+      
+      // Yield to event loop every 10 attempts to keep UI/Web responsive
+      if (attempts % 10 == 0) await Future.delayed(Duration.zero);
+
       if (attempts > 100) { seedBase += rng.nextInt(1000); attempts = 0; }
     }
   }

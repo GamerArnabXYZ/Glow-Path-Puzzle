@@ -30,12 +30,12 @@ class _GS extends State<GameScreen> {
     if(mounted) setState(() { _loading = true; _trans = false; });
     
     // Give UI a frame to show the loader
-    await Future.delayed(100.ms);
+    await Future.delayed(const Duration(milliseconds: 100));
     
-    _d = LevelGenerator.generate(widget.idx, stage:_stgCur); 
+    _d = await LevelGenerator.generate(widget.idx, stage:_stgCur); 
     _path=[_d.start]; _win=false; _trans=false; _timeLeft=10;
     
-    _t=Timer.periodic(1.seconds, (t){if(mounted)setState((){if(_dang){_timeLeft--;if(_timeLeft<=0)_fail();}else{_elap++;}} );});
+    _t=Timer.periodic(const Duration(seconds: 1), (t){if(mounted)setState((){if(_dang){_timeLeft--;if(_timeLeft<=0)_fail();}else{_elap++;}} );});
     if(mounted) setState((){ _loading = false; });
   }
 
@@ -91,8 +91,22 @@ class _GS extends State<GameScreen> {
       int s=1; if(_dang)s=3; else{int t=_d.rows*_d.cols; if(_elap<=t*0.8)s=3; else if(_elap<=t*1.5)s=2;}
       await GameStorage.saveProgress(widget.idx, s);
       if(mounted) {
-        showGeneralDialog(context: context, pageBuilder:(c,a,b)=>const SizedBox(), transitionBuilder:(c,a,b,ch)=>ScaleTransition(scale:a, child:_WinDialog(stars:s, next:(){
-           Navigator.pop(context); Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>GameScreen(idx:widget.idx+1)));
+        showGeneralDialog(
+          context: context, 
+          barrierColor: Colors.black.withOpacity(0.9), // Darker barrier
+          pageBuilder:(c,a,b)=>const SizedBox(), 
+          transitionBuilder:(c,a,b,ch)=>ScaleTransition(scale:a, child:_WinDialog(stars:s, next:(){
+            Navigator.pop(context); 
+            Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => GameScreen(idx: widget.idx + 1),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                transitionDuration: const Duration(milliseconds: 300),
+              ),
+            );
         })));
       }
     }
