@@ -192,8 +192,7 @@ class _LSS extends State<LevelSelectScreen> with RouteAware {
             gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:4, crossAxisSpacing:15, mainAxisSpacing:15, childAspectRatio:0.85),
             itemBuilder:(c,i) {
                bool loc = (i+1)>ul; bool dang = (i+1)%10==0;
-               LevelData? prev; if(!loc) prev = LevelGenerator.generate(i);
-               Color col = loc ? Colors.white10 : (dang ? Colors.redAccent : prev!.color);
+               Color col = loc ? Colors.white10 : LevelGenerator.getColor(i);
                int s = _stars[i.toString()] ?? 0;
                return GestureDetector( 
                  onTap: loc ? null : () => Navigator.push(context, MaterialPageRoute(builder:(_)=>GameScreen(idx:i))), 

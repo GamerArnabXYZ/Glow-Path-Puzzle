@@ -17,7 +17,6 @@ class LevelGenerator {
       if (candidate != null) return candidate;
       attempts++; 
       
-      // Yield to event loop every 10 attempts to keep UI/Web responsive
       if (attempts % 10 == 0) await Future.delayed(Duration.zero);
 
       if (attempts > 100) { seedBase += rng.nextInt(1000); attempts = 0; }
@@ -37,7 +36,7 @@ class LevelGenerator {
     int gapCount = maxGaps > 0 ? rng.nextInt(maxGaps + 1) : 0;
     if(isDanger && gapCount<3) gapCount=3+rng.nextInt(3);
 
-    Color color = isDanger ? const Color(0xFFFF1744) : [Colors.cyanAccent, Colors.orangeAccent, Colors.purpleAccent,Colors.greenAccent, Colors.pinkAccent, Colors.amberAccent,const Color(0xFF00E5FF), const Color(0xFFD500F9)][idx % 8];
+    Color color = getColor(idx);
 
     int total=rows*cols; int start=rng.nextInt(total); Set<int> gaps={};
     int ax=0;
@@ -59,7 +58,6 @@ class LevelGenerator {
     }
 
     int targetSize = total - gaps.length;
-    // Pre-check: All non-gap tiles must have at least one reachable non-gap neighbor
     for(int i=0; i<total; i++) {
       if(!gaps.contains(i)) {
         var nbs = getNeighbors(i, rows, cols, portals: portals);
@@ -67,7 +65,6 @@ class LevelGenerator {
       }
     }
 
-    // Solve with complexity limit (max 2000 steps)
     var sol = Solver.solve(rows, cols, start, {start}, gaps, targetSize, portals, limit: 2000);
     if(sol != null) return LevelData(idx+1, rows, cols, start, color, gaps, portals: portals, isDanger: isDanger);
     
@@ -77,6 +74,16 @@ class LevelGenerator {
   static bool _isol(int h, int s, int r, int c, Set<int> gaps) {
     var neighbors = getNeighbors(s, r, c);
     return neighbors.every((n) => n == h || gaps.contains(n));
+  }
+
+  static Color getColor(int idx) {
+    bool isDanger = (idx + 1) % 10 == 0;
+    if (isDanger) return const Color(0xFFFF1744);
+    return [
+      Colors.cyanAccent, Colors.orangeAccent, Colors.purpleAccent,
+      Colors.greenAccent, Colors.pinkAccent, Colors.amberAccent,
+      const Color(0xFF00E5FF), const Color(0xFFD500F9)
+    ][idx % 8];
   }
 
   static List<int> getNeighbors(int x, int r, int c, {Map<int, int>? portals}) {
@@ -101,13 +108,11 @@ class Solver {
 
   static List<int>? _solveInternal(int r, int c, int cur, Set<int> vis, Set<int> gaps, int targetSize, Map<int, int> portals, int limit) {
     _steps++;
-    if(_steps > limit) return null; // Early exit if too complex
+    if(_steps > limit) return null;
     if(vis.length == targetSize) return vis.toList();
     
     List<int> neighbors = LevelGenerator.getNeighbors(cur, r, c, portals: portals);
     
-    // Warnsdorff's Heuristic: Sort neighbors by their degree (number of available unvisited neighbors)
-    // Tiles with fewer available neighbors should be visited first to avoid isolating them.
     List<MapEntry<int, int>> sorted = [];
     for(int next in neighbors) {
       if(!vis.contains(next) && !gaps.contains(next)) {
@@ -120,16 +125,13 @@ class Solver {
       }
     }
 
-    // Sort by degree ascending
     sorted.sort((a, b) => a.value.compareTo(b.value));
 
     for(var entry in sorted) {
       int next = entry.key;
       vis.add(next);
       
-      // Fast connectivity check: if any unvisited tile (other than the goal) has 0 neighbors, it's a dead end
       bool deadEnd = false;
-      // We only need to check neighbors of 'cur' that were NOT chosen as 'next'
       for(int nb in neighbors) {
         if(!vis.contains(nb) && !gaps.contains(nb)) {
           var nbsOfNb = LevelGenerator.getNeighbors(nb, r, c, portals: portals);
