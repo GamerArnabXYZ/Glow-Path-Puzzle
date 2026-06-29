@@ -74,22 +74,25 @@
   </div>
 
   <script>
+    // Flutter 3.22+ initialization orchestration
     window.addEventListener('load', function() {
-      // Create and inject Flutter bootstrap script safely
-      var script = document.createElement('script');
-      script.src = "flutter_bootstrap.js";
-      script.async = true;
-      
-      // Remove loader after a small delay once the window finishes loading resources
-      script.addEventListener('load', function() {
-        setTimeout(function() {
-          const loader = document.getElementById('loading-indicator');
-          if (loader) loader.remove();
-        }, 1200); // 1.2 seconds delay for assets to safely bind
-      });
+      if ('_flutter' in window) {
+        _flutter.loader.load({
+          onEntrypointLoaded: async function(engineInitializer) {
+            const appRunner = await engineInitializer.initializeEngine({
+              useColorEmoji: false,
+            });
 
-      document.body.appendChild(script);
+            // Remove the neon loader right before the game canvas renders
+            const loader = document.getElementById('loading-indicator');
+            if (loader) loader.remove();
+
+            await appRunner.runApp();
+          }
+        });
+      }
     });
   </script>
+  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
