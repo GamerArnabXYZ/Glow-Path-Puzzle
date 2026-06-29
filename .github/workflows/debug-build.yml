@@ -69,8 +69,9 @@ jobs:
       - name: 📦 Get Dependencies
         run: flutter pub get
 
-      - name: 🌐 Build Web (HTML Renderer)
-        run: flutter build web --release --web-renderer html --base-href "/Glow-Path-Puzzle/"
+      - name: 🌐 Build Web (Highly Optimized HTML Renderer)
+        run: |
+          flutter build web --release --web-renderer html --no-tree-shake-icons --base-href "/Glow-Path-Puzzle/"
 
       - name: 📦 Archive Web Build
         run: zip -r web-build.zip build/web
@@ -122,7 +123,7 @@ jobs:
           # Create fresh release with target branch
           gh release create latest-build \
             --title "✅ GlowPath Mega Build" \
-            --notes "### 🚀 Release Breakdown\n- **Android:** 4 APK variants (Universal + 3 ABI-specific)\n- **Web:** Hosted on GitHub Pages & attached as ZIP\n- **Renderer:** Optimized HTML for mobile web performance.\n- **Performance:** Web optimizations (blur/tint disabled on web)." \
+            --notes "### 🚀 Release Breakdown\n- **Android:** 4 APK variants (Universal + 3 ABI-specific)\n- **Web:** Hosted on GitHub Pages & attached as ZIP\n- **Renderer:** Optimized HTML for mobile web performance.\n- **Performance:** Web optimizations (fonts tree-shaking stripped for cold start fix)." \
             --prerelease \
             --target main \
             apks/GlowPath-*.apk \

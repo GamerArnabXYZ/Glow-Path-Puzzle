@@ -68,11 +68,37 @@
   </style>
 </head>
 <body>
-  <div class="loader-container">
+  <div class="loader-container" id="loading-indicator">
     <div class="loader"></div>
     <div class="loading-text">Initializing Glow...</div>
   </div>
 
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.addEventListener('load', function() {
+      // Custom entrypoint targeting to enforce HTML renderer and fast boot
+      _flutter = {
+        loader: {
+          didCreateEngineInitializer: async function(engineInitializer) {
+            let appRunner = await engineInitializer.initializeEngine({
+              useColorEmoji: false,
+              webRenderer: "html" // Strictly forcing HTML renderer
+            });
+            
+            // Remove loader right before the game canvas appears
+            const loader = document.getElementById('loading-indicator');
+            if (loader) loader.remove();
+            
+            await appRunner.runApp();
+          }
+        }
+      };
+      
+      // Injecting bootstrap script programmatically to control the flow
+      var script = document.createElement('script');
+      script.src = "flutter_bootstrap.js";
+      script.async = true;
+      document.body.appendChild(script);
+    });
+  </script>
 </body>
 </html>
