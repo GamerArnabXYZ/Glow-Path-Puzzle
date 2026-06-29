@@ -3,7 +3,7 @@
 <head>
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-Edge">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Infinite Neon Puzzle Game.">
 
   <!-- iOS meta tags & icons -->
@@ -74,26 +74,22 @@
   </div>
 
   <script>
-    // Flutter 3.22+ standard bootstrap runner
     window.addEventListener('load', function() {
+      // Create and inject Flutter bootstrap script safely
       var script = document.createElement('script');
       script.src = "flutter_bootstrap.js";
       script.async = true;
+      
+      // Remove loader after a small delay once the window finishes loading resources
+      script.addEventListener('load', function() {
+        setTimeout(function() {
+          const loader = document.getElementById('loading-indicator');
+          if (loader) loader.remove();
+        }, 1200); // 1.2 seconds delay for assets to safely bind
+      });
+
       document.body.appendChild(script);
     });
-
-    // This function is automatically triggered by flutter_bootstrap.js in newer versions
-    function @@onFlutterAppLoaded@@(engineInitializer) {
-      engineInitializer.initializeEngine({
-        useColorEmoji: false
-      }).then(function(appRunner) {
-        // Remove neon loader before running the app canvas
-        const loader = document.getElementById('loading-indicator');
-        if (loader) loader.remove();
-        
-        return appRunner.runApp();
-      });
-    }
   </script>
 </body>
 </html>
