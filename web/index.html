@@ -3,7 +3,7 @@
 <head>
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta content="IE=Edge" http-equiv="X-Edge">
   <meta name="description" content="Infinite Neon Puzzle Game.">
 
   <!-- iOS meta tags & icons -->
@@ -74,31 +74,26 @@
   </div>
 
   <script>
+    // Flutter 3.22+ standard bootstrap runner
     window.addEventListener('load', function() {
-      // Custom entrypoint targeting to enforce HTML renderer and fast boot
-      _flutter = {
-        loader: {
-          didCreateEngineInitializer: async function(engineInitializer) {
-            let appRunner = await engineInitializer.initializeEngine({
-              useColorEmoji: false,
-              webRenderer: "html" // Strictly forcing HTML renderer
-            });
-            
-            // Remove loader right before the game canvas appears
-            const loader = document.getElementById('loading-indicator');
-            if (loader) loader.remove();
-            
-            await appRunner.runApp();
-          }
-        }
-      };
-      
-      // Injecting bootstrap script programmatically to control the flow
       var script = document.createElement('script');
       script.src = "flutter_bootstrap.js";
       script.async = true;
       document.body.appendChild(script);
     });
+
+    // This function is automatically triggered by flutter_bootstrap.js in newer versions
+    function @@onFlutterAppLoaded@@(engineInitializer) {
+      engineInitializer.initializeEngine({
+        useColorEmoji: false
+      }).then(function(appRunner) {
+        // Remove neon loader before running the app canvas
+        const loader = document.getElementById('loading-indicator');
+        if (loader) loader.remove();
+        
+        return appRunner.runApp();
+      });
+    }
   </script>
 </body>
 </html>
