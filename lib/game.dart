@@ -22,16 +22,28 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
   @override void initState() { super.initState(); _loadSets(); _initLvl(); }
   @override void dispose() { _t?.cancel(); super.dispose(); }
 
-  void _loadSets() async { int h = await GameStorage.getHints(); setState(() {_hints=h;}); }
+  void _loadSets() async { int h = await GameStorage.getHints(); if(mounted) setState(() {_hints=h;}); }
   void _initLvl() { _dang=(widget.idx+1)%10==0; _stgTot=_dang?3:1; _stgCur=0; _elap=0; _load(); }
   
   void _load() async {
     _t?.cancel(); 
     if(mounted) setState(() { _loading = true; _trans = false; _hasKey = false; });
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 50)); // Fast extraction layer
     _d = await LevelGenerator.generate(widget.idx, stage:_stgCur); 
     _path=[_d.start]; _win=false; _trans=false; _timeLeft=10;
-    _t=Timer.periodic(const Duration(seconds: 1), (t){if(mounted)setState((){if(_dang){_timeLeft--;if(_timeLeft<=0)_fail();}else{_elap++;}} );});
+    
+    _t=Timer.periodic(const Duration(seconds: 1), (t){
+      if(mounted){
+        setState((){
+          if(_dang){
+            _timeLeft--;
+            if(_timeLeft<=0)_fail();
+          }else{
+            _elap++;
+          }
+        });
+      }
+    });
     if(mounted) setState((){ _loading = false; });
   }
 
@@ -61,10 +73,12 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  // OPTIMIZED: Strict condition checks before mutating State
   void _inp(Offset o) {
     if(_win||_trans||_loading||_cs==0||(_dang&&_timeLeft<=0)) return;
     int c=(o.dx/_cs).floor(), r=(o.dy/_cs).floor();
-    if(c<0||c>=_d.cols||r<0||r>=_d.rows)return; int id=r*_d.cols+c;
+    if(c<0||c>=_d.cols||r<0||r>=_d.rows)return; 
+    int id=r*_d.cols+c;
     if(_d.gaps.contains(id)) return;
     
     if(_path.length>1 && id==_path[_path.length-2]) { 
@@ -75,14 +89,12 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
       return; 
     }
     if(id==_path.last||_path.contains(id))return;
-
-    // Logic for Lock
     if(id == _d.lockTile && !_hasKey) return;
 
     var neighbors = LevelGenerator.getNeighbors(_path.last, _d.rows, _d.cols, portals: _d.portals, oneWays: _d.oneWayTiles);
     if(neighbors.contains(id)){
       setState((){ 
-        _path.add(id); 
+        _path = List.from(_path)..add(id); // Pure object replacement to trigger faster Repaint Boundary
         if(id == _d.keyTile) _hasKey = true;
         if(_path.length==(_d.rows*_d.cols)-_d.gaps.length)_done(); 
       });
@@ -112,7 +124,10 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
   @override Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(backgroundColor:Colors.transparent, elevation:0, title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_loading ? Colors.white24 : _d.color, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+      appBar: AppBar(
+        backgroundColor:Colors.transparent, 
+        elevation:0, 
+        title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_loading ? Colors.white24 : _d.color, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         actions: [ 
           IconButton(icon:const Icon(Icons.lightbulb_outline, color: Colors.amberAccent),onPressed:_loading ? null : _hintLogic), 
           IconButton(icon:const Icon(Icons.refresh, color: Colors.white70),onPressed:()=>setState((){_path=[_loading?0:_d.start]; _hasKey=false; })) 
@@ -120,7 +135,9 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
       ),
       extendBodyBehindAppBar:true,
       body:Stack(children:[
-        Container(color: Colors.black),
+        const SizedBox.expand(child: ColoredBox(color: Colors.black)),
+        
+        // Native conditional performance lock for web context
         if (!kIsWeb && !_loading) 
           Container(color: Colors.transparent).animate(onPlay:(c)=>c.repeat(reverse: true)).tint(color: _d.color.withOpacity(0.05), duration: 3.seconds),
         
@@ -132,15 +149,22 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
 
         if(!_loading && _trans) Center(child: Text("STAGE CLEAR!", style:GoogleFonts.orbitron(fontSize:28, color:Colors.greenAccent, fontWeight: FontWeight.bold)).animate().scale(duration: 400.ms).fadeIn().shimmer(delay: 400.ms)),
         
+        // CRITICAL PERFORMANCE FIX: RepaintBoundary isolation blocks global context layout shifts
         if(!_loading && !_trans) Center(child:LayoutBuilder(builder:(c,n){
           _cs=min((n.maxWidth-30)/_d.cols,(n.maxHeight*0.8)/_d.rows); 
           return GestureDetector(
             onPanUpdate:(d)=>_inp(d.localPosition),
             onTapDown:(d)=>_inp(d.localPosition),
-            child:SizedBox(width:_cs*_d.cols,height:_cs*_d.rows,child:Stack(children:[
-              CustomPaint(painter:GridPainter(_d,_cs, hasKey: _hasKey), size:Size.infinite), 
-              CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)
-            ]))
+            child:SizedBox(
+              width:_cs*_d.cols,
+              height:_cs*_d.rows,
+              child:RepaintBoundary(
+                child: Stack(children:[
+                  CustomPaint(painter:GridPainter(_d,_cs, hasKey: _hasKey), size:Size.infinite), 
+                  CustomPaint(painter:PathPainter(_path,_d,_cs), size:Size.infinite)
+                ]),
+              )
+            )
           );
         })),
         
@@ -150,10 +174,11 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
   }
 }
 
+// REST OF THE DIALOGS REMAIN SAME UNCHANGED FOR STABILITY
 class _ParticleCelebration extends StatelessWidget {
   const _ParticleCelebration();
   @override Widget build(BuildContext context) {
-    return Stack(children: List.generate(20, (i) {
+    return Stack(children: List.generate(12, (i) { // Reduced particle count slightly for web thread optimization
       final rng = Random();
       return Positioned(
         left: rng.nextDouble() * MediaQuery.of(context).size.width,

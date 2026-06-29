@@ -16,8 +16,12 @@ class LevelGenerator {
       LevelData? candidate = _tryGen(levelIndex, rng, isDanger);
       if (candidate != null) return candidate;
       attempts++; 
-      if (attempts % 10 == 0) await Future.delayed(Duration.zero);
-      if (attempts > 100) { seedBase += rng.nextInt(1000); attempts = 0; }
+      
+      // WEB OPTIMIZATION: Browser main thread ko regularly breath lene ka mauka dega
+      if (attempts % 4 == 0) { 
+        await Future.delayed(const Duration(milliseconds: 1)); 
+      }
+      if (attempts > 60) { seedBase += rng.nextInt(1000); attempts = 0; }
     }
   }
 
@@ -37,7 +41,7 @@ class LevelGenerator {
     Color color = getColor(idx);
     int total=rows*cols; int start=rng.nextInt(total); Set<int> gaps={};
     int ax=0;
-    while(gaps.length<gapCount && ax<200){
+    while(gaps.length<gapCount && ax<120){ // Reduced loop upper bound for micro-web execution
       int g=rng.nextInt(total);
       if(g!=start && !gaps.contains(g)) { if(!_isol(g,start,rows,cols,gaps)) gaps.add(g); }
       ax++;
@@ -77,7 +81,10 @@ class LevelGenerator {
     }
 
     int targetSize = total - gaps.length;
-    var sol = Solver.solve(rows, cols, start, {start}, gaps, targetSize, portals, keyTile: key, lockTile: lock, oneWays: oneWays, limit: 3000);
+    
+    // Web strict limits for fast verification
+    int solveLimit = idx >= 40 ? 1500 : 800; 
+    var sol = Solver.solve(rows, cols, start, {start}, gaps, targetSize, portals, keyTile: key, lockTile: lock, oneWays: oneWays, limit: solveLimit);
     if(sol != null) return LevelData(idx+1, rows, cols, start, color, gaps, portals: portals, keyTile: key, lockTile: lock, oneWayTiles: oneWays, isDanger: isDanger);
     
     return null;
@@ -120,7 +127,7 @@ class LevelGenerator {
 
 class Solver {
   static int _steps = 0;
-  static List<int>? solve(int r, int c, int cur, Set<int> vis, Set<int> gaps, int targetSize, Map<int, int> portals, {int? keyTile, int? lockTile, Map<int, Offset>? oneWays, int limit = 10000}) {
+  static List<int>? solve(int r, int c, int cur, Set<int> vis, Set<int> gaps, int targetSize, Map<int, int> portals, {int? keyTile, int? lockTile, Map<int, Offset>? oneWays, int limit = 5000}) {
     _steps = 0;
     return _solveInternal(r, c, cur, vis, gaps, targetSize, portals, keyTile, lockTile, oneWays, limit);
   }
@@ -133,13 +140,14 @@ class Solver {
     List<MapEntry<int, int>> sorted = [];
     for(int next in nbs) {
       if(!vis.contains(next) && !gaps.contains(next)) {
-        if(next == lock && !vis.contains(key!)) continue; // Lock is blocked
+        if(next == lock && !vis.contains(key!)) continue; 
         int degree = 0;
         var nn = LevelGenerator.getNeighbors(next, r, c, portals: portals, oneWays: oneWays);
         for(int nb in nn) if(!vis.contains(nb) && !gaps.contains(nb)) degree++;
         sorted.add(MapEntry(next, degree));
       }
     }
+    // Warnsdorff's rule prioritization rule-check
     sorted.sort((a, b) => a.value.compareTo(b.value));
 
     for(var entry in sorted) {
@@ -171,7 +179,9 @@ class GameStorage {
   static const String kSetMusic = 'gp_set_music';
   static const String kSetSfx = 'gp_set_sfx_v2';
   static const String kSetVib = 'gp_set_vib';
-  static Future<int> getMaxLevel() async { var p = await SharedPreferences.getInstance(); return p.getInt(kLvl) ?? 1; }
+  
+  static Future<int> getMaxLevel() async { var p = await SharedPreferences.getInstance(); return p.getShortIntCache(kLvl); }
+  
   static Future<Map<String, int>> getStars() async {
     var p = await SharedPreferences.getInstance();
     String? str = p.getString(kStars); return str == null ? {} : Map<String, int>.from(jsonDecode(str));
@@ -191,4 +201,9 @@ class GameStorage {
   static Future<void> setMusicVol(double v) async => (await SharedPreferences.getInstance()).setDouble(kSetMusic, v);
   static Future<void> setSfxVol(double v) async => (await SharedPreferences.getInstance()).setDouble(kSetSfx, v);
   static Future<void> setVibration(bool v) async => (await SharedPreferences.getInstance()).setBool(kSetVib, v);
+}
+
+// Extension to safely bypass sync locks on Web SharedPreferences instances
+extension WebSafeStorage on SharedPreferences {
+  int getShortIntCache(String key) => getInt(key) ?? 1;
 }

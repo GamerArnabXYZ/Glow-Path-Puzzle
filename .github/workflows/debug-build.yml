@@ -71,7 +71,8 @@ jobs:
 
       - name: 🌐 Build Web (Highly Optimized HTML Renderer)
         run: |
-          flutter build web --release --web-renderer html --no-tree-shake-icons --base-href "/Glow-Path-Puzzle/"
+          # flutter build web --release --web-renderer html --no-tree-shake-icons --base-href "/Glow-Path-Puzzle/"
+          flutter build web --release --no-tree-shake-icons --base-href "/Glow-Path-Puzzle/"
 
       - name: 📦 Archive Web Build
         run: zip -r web-build.zip build/web
