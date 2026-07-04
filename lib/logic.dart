@@ -83,7 +83,7 @@ class LevelGenerator {
     int targetSize = total - gaps.length;
     
     // Web strict limits for fast verification
-    int solveLimit = idx >= 40 ? 1500 : 800; 
+    int solveLimit = idx >= 40 ? 1200 : 600;
     var sol = Solver.solve(rows, cols, start, {start}, gaps, targetSize, portals, keyTile: key, lockTile: lock, oneWays: oneWays, limit: solveLimit);
     if(sol != null) return LevelData(idx+1, rows, cols, start, color, gaps, portals: portals, keyTile: key, lockTile: lock, oneWayTiles: oneWays, isDanger: isDanger);
     
@@ -173,34 +173,40 @@ class Solver {
 }
 
 class GameStorage {
-  static const String kLvl = 'gp_18_lvl'; 
+  static SharedPreferences? _prefs;
+  static const String kLvl = 'gp_18_lvl';
   static const String kStars = 'gp_18_stars';
   static const String kHints = 'gp_hint_count';
   static const String kSetMusic = 'gp_set_music';
   static const String kSetSfx = 'gp_set_sfx_v2';
   static const String kSetVib = 'gp_set_vib';
-  
-  static Future<int> getMaxLevel() async { var p = await SharedPreferences.getInstance(); return p.getShortIntCache(kLvl); }
-  
+
+  static Future<SharedPreferences> _getPrefs() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs!;
+  }
+
+  static Future<int> getMaxLevel() async => (await _getPrefs()).getShortIntCache(kLvl);
+
   static Future<Map<String, int>> getStars() async {
-    var p = await SharedPreferences.getInstance();
+    var p = await _getPrefs();
     String? str = p.getString(kStars); return str == null ? {} : Map<String, int>.from(jsonDecode(str));
   }
   static Future<void> saveProgress(int lvl, int stars) async {
-    var p = await SharedPreferences.getInstance();
+    var p = await _getPrefs();
     int cur = p.getInt(kLvl) ?? 1; if ((lvl+2)>cur) await p.setInt(kLvl, lvl+2);
     Map<String, int> sm = await getStars();
     if (stars > (sm[lvl.toString()]??0)) { sm[lvl.toString()]=stars; await p.setString(kStars, jsonEncode(sm)); }
   }
-  static Future<int> getHints() async { var p = await SharedPreferences.getInstance(); return p.getInt(kHints) ?? 5; }
-  static Future<void> useHint() async { var p = await SharedPreferences.getInstance(); int c=p.getInt(kHints)??5; if(c>0)await p.setInt(kHints,c-1); }
-  static Future<void> addHints(int a) async { var p = await SharedPreferences.getInstance(); int c=p.getInt(kHints)??5; await p.setInt(kHints, c+a); }
-  static Future<double> getMusicVol() async => (await SharedPreferences.getInstance()).getDouble(kSetMusic) ?? 1.0;
-  static Future<double> getSfxVol() async => (await SharedPreferences.getInstance()).getDouble(kSetSfx) ?? 1.0;
-  static Future<bool> getVibration() async => (await SharedPreferences.getInstance()).getBool(kSetVib) ?? true;
-  static Future<void> setMusicVol(double v) async => (await SharedPreferences.getInstance()).setDouble(kSetMusic, v);
-  static Future<void> setSfxVol(double v) async => (await SharedPreferences.getInstance()).setDouble(kSetSfx, v);
-  static Future<void> setVibration(bool v) async => (await SharedPreferences.getInstance()).setBool(kSetVib, v);
+  static Future<int> getHints() async => (await _getPrefs()).getInt(kHints) ?? 5;
+  static Future<void> useHint() async { var p = await _getPrefs(); int c=p.getInt(kHints)??5; if(c>0)await p.setInt(kHints,c-1); }
+  static Future<void> addHints(int a) async { var p = await _getPrefs(); int c=p.getInt(kHints)??5; await p.setInt(kHints, c+a); }
+  static Future<double> getMusicVol() async => (await _getPrefs()).getDouble(kSetMusic) ?? 1.0;
+  static Future<double> getSfxVol() async => (await _getPrefs()).getDouble(kSetSfx) ?? 1.0;
+  static Future<bool> getVibration() async => (await _getPrefs()).getBool(kSetVib) ?? true;
+  static Future<void> setMusicVol(double v) async => (await _getPrefs()).setDouble(kSetMusic, v);
+  static Future<void> setSfxVol(double v) async => (await _getPrefs()).setDouble(kSetSfx, v);
+  static Future<void> setVibration(bool v) async => (await _getPrefs()).setBool(kSetVib, v);
 }
 
 // Extension to safely bypass sync locks on Web SharedPreferences instances

@@ -22,29 +22,45 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
   @override void initState() { super.initState(); _loadSets(); _initLvl(); }
   @override void dispose() { _t?.cancel(); super.dispose(); }
 
-  void _loadSets() async { int h = await GameStorage.getHints(); if(mounted) setState(() {_hints=h;}); }
-  void _initLvl() { _dang=(widget.idx+1)%10==0; _stgTot=_dang?3:1; _stgCur=0; _elap=0; _load(); }
-  
+  void _loadSets() async { 
+    int h = await GameStorage.getHints(); 
+    if(mounted) setState(() {_hints=h;}); 
+  }
+  void _initLvl() { 
+    _dang=(widget.idx+1)%10==0; 
+    _stgTot=_dang?3:1; 
+    _stgCur=0; 
+    _elap=0; 
+    _load(); 
+  }
+
   void _load() async {
-    _t?.cancel(); 
-    if(mounted) setState(() { _loading = true; _trans = false; _hasKey = false; });
-    await Future.delayed(const Duration(milliseconds: 50)); // Fast extraction layer
-    _d = await LevelGenerator.generate(widget.idx, stage:_stgCur); 
+    _t?.cancel();
+    if(!mounted) return;
+    setState(() { _loading = true; _trans = false; _hasKey = false; });
+    await Future.delayed(const Duration(milliseconds: 50)); 
+    _d = await LevelGenerator.generate(widget.idx, stage:_stgCur);
+    if(!mounted) return;
     _path=[_d.start]; _win=false; _trans=false; _timeLeft=10;
-    
+
     _t=Timer.periodic(const Duration(seconds: 1), (t){
       if(mounted){
         setState((){
           if(_dang){
             _timeLeft--;
-            if(_timeLeft<=0)_fail();
+            if(_timeLeft<=0){
+              t.cancel();
+              _fail();
+            }
           }else{
             _elap++;
           }
         });
+      } else {
+        t.cancel();
       }
     });
-    if(mounted) setState((){ _loading = false; });
+    setState((){ _loading = false; });
   }
 
   void _hintLogic() async {
