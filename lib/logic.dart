@@ -186,7 +186,7 @@ class GameStorage {
     return _prefs!;
   }
 
-  static Future<int> getMaxLevel() async => (await _getPrefs()).getShortIntCache(kLvl);
+  static Future<int> getMaxLevel() async => (await _getPrefs()).getIntOrDefault(kLvl);
 
   static Future<Map<String, int>> getStars() async {
     var p = await _getPrefs();
@@ -209,7 +209,7 @@ class GameStorage {
   static Future<void> setVibration(bool v) async => (await _getPrefs()).setBool(kSetVib, v);
 }
 
-// Extension to safely bypass sync locks on Web SharedPreferences instances
+// Extension for safe default int retrieval on Web SharedPreferences
 extension WebSafeStorage on SharedPreferences {
-  int getShortIntCache(String key) => getInt(key) ?? 1;
+  int getIntOrDefault(String key, [int defaultValue = 1]) => getInt(key) ?? defaultValue;
 }

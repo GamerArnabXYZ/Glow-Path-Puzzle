@@ -136,6 +136,6 @@ class PathPainter extends CustomPainter {
     c.drawCircle(Offset(hx+bx/2, hy+bx/2), bx*0.2, headPaint);
   }
 
-  // CRITICAL FIX: Ab sirf tabhi repaint hoga jab path list badlegi (No unnecessary lag!)
-  @override bool shouldRepaint(covariant PathPainter o) => o.p.length != p.length || o.p.last != p.last;
+  // CRITICAL FIX: Full path comparison to catch backtrack+re-path visual bugs
+  @override bool shouldRepaint(covariant PathPainter o) => !listEquals(o.p, p);
 }

@@ -146,7 +146,7 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
         title:Text(_dang?"BOSS":"LEVEL ${widget.idx+1}", style:TextStyle(color:_loading ? Colors.white24 : _d.color, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         actions: [ 
           IconButton(icon:const Icon(Icons.lightbulb_outline, color: Colors.amberAccent),onPressed:_loading ? null : _hintLogic), 
-          IconButton(icon:const Icon(Icons.refresh, color: Colors.white70),onPressed:()=>setState((){_path=[_loading?0:_d.start]; _hasKey=false; })) 
+          IconButton(icon:Icon(Icons.refresh, color: _loading ? Colors.white24 : Colors.white70),onPressed:_loading ? null : ()=>setState((){_path=[_d.start]; _hasKey=false; })) 
         ]
       ),
       extendBodyBehindAppBar:true,
@@ -191,19 +191,46 @@ class _GS extends State<GameScreen> with TickerProviderStateMixin {
 }
 
 // REST OF THE DIALOGS REMAIN SAME UNCHANGED FOR STABILITY
-class _ParticleCelebration extends StatelessWidget {
+class _ParticleCelebration extends StatefulWidget {
   const _ParticleCelebration();
-  @override Widget build(BuildContext context) {
-    return Stack(children: List.generate(12, (i) { // Reduced particle count slightly for web thread optimization
-      final rng = Random();
-      return Positioned(
-        left: rng.nextDouble() * MediaQuery.of(context).size.width,
-        top: rng.nextDouble() * MediaQuery.of(context).size.height,
-        child: Container(width: 8, height: 8, decoration: BoxDecoration(color: [Colors.cyanAccent, Colors.purpleAccent, Colors.yellowAccent][rng.nextInt(3)], shape: BoxShape.circle))
-        .animate().moveY(begin: 0, end: -100 - rng.nextDouble()*200, duration: 1.seconds, curve: Curves.easeOut).fadeOut(),
-      );
-    }));
+  @override State<_ParticleCelebration> createState() => _ParticleCelebrationState();
+}
+
+class _ParticleCelebrationState extends State<_ParticleCelebration> {
+  // Pre-calculate random values once in initState so particles don't jump every frame
+  late final List<_ParticleData> _particles;
+
+  @override
+  void initState() {
+    super.initState();
+    final rng = Random();
+    _particles = List.generate(12, (_) => _ParticleData(
+      xFraction: rng.nextDouble(),
+      yFraction: rng.nextDouble(),
+      colorIndex: rng.nextInt(3),
+      moveEnd: -100 - rng.nextDouble() * 200,
+    ));
   }
+
+  @override Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return Stack(children: _particles.map((p) {
+      return Positioned(
+        left: p.xFraction * size.width,
+        top: p.yFraction * size.height,
+        child: Container(width: 8, height: 8, decoration: BoxDecoration(color: [Colors.cyanAccent, Colors.purpleAccent, Colors.yellowAccent][p.colorIndex], shape: BoxShape.circle))
+        .animate().moveY(begin: 0, end: p.moveEnd, duration: 1.seconds, curve: Curves.easeOut).fadeOut(),
+      );
+    }).toList());
+  }
+}
+
+class _ParticleData {
+  final double xFraction;
+  final double yFraction;
+  final int colorIndex;
+  final double moveEnd;
+  const _ParticleData({required this.xFraction, required this.yFraction, required this.colorIndex, required this.moveEnd});
 }
 
 class _WinDialog extends StatelessWidget {

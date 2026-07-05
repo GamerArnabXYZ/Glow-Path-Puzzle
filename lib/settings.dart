@@ -14,7 +14,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _load() async {
     double m = await GameStorage.getMusicVol();
     double s = await GameStorage.getSfxVol();
-    setState(() { _musicVol = m; _sfxVol = s; });
+    if(mounted) setState(() { _musicVol = m; _sfxVol = s; });
   }
 
   @override Widget build(BuildContext context) {
